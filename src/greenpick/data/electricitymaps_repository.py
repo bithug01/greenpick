@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from ..models import CarbonReading, Provider
+from ..models import CarbonReading, Provider, HourlyCarbon
 from .mock_repository import MockCarbonRepository
 from .static_data import region_meta
 
@@ -36,6 +36,10 @@ class ElectricityMapsRepository:
         self._fallback = MockCarbonRepository()
         self._token_rejected = False   # once a 401/403 is seen, stop calling with a bad key
         self._warned_no_token = False
+
+    async def carbon_history(self, provider: Provider, region: str) -> list[HourlyCarbon]:
+        # Not implemented for this (unused) source; degrade to the fallback curve.
+        return await self._fallback.carbon_history(provider, region)
 
     async def carbon_now(self, provider: Provider, region: str) -> CarbonReading:
         meta = region_meta(provider, region)

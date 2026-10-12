@@ -8,7 +8,7 @@ Lets a single GREENPICK_CARBON_SOURCE=auto give live data on both continents.
 """
 from __future__ import annotations
 
-from ..models import CarbonReading, Provider
+from ..models import CarbonReading, Provider, HourlyCarbon
 from .mock_repository import MockCarbonRepository
 from .eia_repository import EIARepository
 from .entsoe_repository import ENTSOERepository
@@ -28,3 +28,11 @@ class AutoRepository:
         if meta.get("entsoe_eic"):
             return await self._entsoe.carbon_now(provider, region)
         return await self._mock.carbon_now(provider, region)
+
+    async def carbon_history(self, provider: Provider, region: str) -> list[HourlyCarbon]:
+        meta = region_meta(provider, region) or {}
+        if meta.get("eia_ba"):
+            return await self._eia.carbon_history(provider, region)
+        if meta.get("entsoe_eic"):
+            return await self._entsoe.carbon_history(provider, region)
+        return await self._mock.carbon_history(provider, region)

@@ -21,7 +21,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
-from ..models import CarbonReading, Provider
+from ..models import CarbonReading, Provider, HourlyCarbon
 from .mock_repository import MockCarbonRepository
 from .static_data import region_meta, emission_factors
 
@@ -99,6 +99,12 @@ class ENTSOERepository:
                 await asyncio.sleep(0.6 * attempt)   # brief backoff: 0.6s, 1.2s
 
         return await self._fallback.carbon_now(provider, region)
+
+    async def carbon_history(self, provider: Provider, region: str) -> list[HourlyCarbon]:
+        """v1: ENTSO-E A75 multi-hour parsing isn't implemented yet; degrade to the synthetic
+        fallback curve (honestly a placeholder) rather than block scheduling for EU regions.
+        TODO: parse per-position Points across the Period for a real EU hourly series."""
+        return await self._fallback.carbon_history(provider, region)
 
     def _xml_to_reading(self, provider: Provider, region: str, xml_text: str) -> CarbonReading | None:
         """Parse A75 XML: for each TimeSeries (one production type), take its latest

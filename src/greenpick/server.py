@@ -11,7 +11,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .models import Workload, GeoPoint, Provider
 from .data import get_repository
-from .services import carbon_service, recommender
+from .services import carbon_service, recommender, scheduling_service
 
 mcp = FastMCP("greenpick")
 _repo = get_repository()
@@ -97,6 +97,15 @@ async def region_carbon_now(provider: str, region: str) -> dict:
     """Current grid carbon intensity for a region, with source, timestamp, and data freshness."""
     reading = await carbon_service.carbon_now(_repo, provider, region)  # type: ignore[arg-type]
     return reading.model_dump()
+
+
+@mcp.tool()
+async def cleanest_hours_to_run(provider: str, region: str, top_n: int = 3) -> dict:
+    """Carbon-aware scheduling: given a region, report its cleanest recent hours so you can
+    time a DEFERRABLE job (nightly ETL, batch, backups, training) when the grid is greenest.
+    Returns the lowest-carbon hours + the % reduction vs. the dirtiest hour. Directional."""
+    advice = await scheduling_service.cleanest_hours(_repo, provider, region, top_n)  # type: ignore[arg-type]
+    return advice.model_dump()
 
 
 @mcp.tool()

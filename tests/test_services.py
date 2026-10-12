@@ -263,3 +263,43 @@ async def test_per_axis_ratings_assigned(monkeypatch):
     by_carbon = sorted(rec.candidates, key=lambda c: c.carbon.g_co2_per_kwh)
     assert by_carbon[0].carbon_rating == "green"
     assert by_carbon[-1].carbon_rating == "red"
+
+
+# --- Carbon-aware scheduling ---
+
+from greenpick.services import scheduling_service
+
+
+@pytest.mark.asyncio
+async def test_cleanest_hours_mock():
+    repo = MockCarbonRepository()
+    advice = await scheduling_service.cleanest_hours(repo, "aws", "us-east-1", top_n=3)
+    assert advice.hours_analyzed == 24
+    assert len(advice.cleanest) == 3
+    # cleanest first, ascending
+    g = [h.g_co2_per_kwh for h in advice.cleanest]
+    assert g == sorted(g)
+    # the top pick is the global minimum of the series
+    assert advice.cleanest_g_co2_per_kwh == advice.cleanest[0].g_co2_per_kwh
+    assert advice.cleanest_g_co2_per_kwh <= advice.dirtiest_g_co2_per_kwh
+    assert advice.quality == "mock"
+
+
+@pytest.mark.asyncio
+async def test_cleanest_hours_eia_multihour(monkeypatch):
+    # Two hours: hour 18 cleaner (more nuclear), hour 19 dirtier (more gas).
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"response": {"data": [
+            {"period": "2026-10-12T19", "fueltype": "NG",  "value": "1500"},
+            {"period": "2026-10-12T19", "fueltype": "NUC", "value": "500"},
+            {"period": "2026-10-12T18", "fueltype": "NG",  "value": "500"},
+            {"period": "2026-10-12T18", "fueltype": "NUC", "value": "1500"},
+        ]}})
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = EIARepository(api_key="k")
+    hist = await repo.carbon_history("aws", "us-east-nyc")
+    periods = {h.period: h.g_co2_per_kwh for h in hist}
+    assert set(periods) == {"2026-10-12T18", "2026-10-12T19"}
+    assert periods["2026-10-12T18"] < periods["2026-10-12T19"]  # nuclear-heavy hour cleaner

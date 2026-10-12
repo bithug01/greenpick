@@ -35,6 +35,26 @@ class CarbonReading(BaseModel):
     quality: DataQuality             # how trustworthy / fresh this reading is
 
 
+class HourlyCarbon(BaseModel):
+    """One hour's grid carbon intensity, for scheduling deferrable work."""
+    period: str                       # the hour label from the source (e.g. "2026-10-12T03")
+    g_co2_per_kwh: float
+
+
+class SchedulingAdvice(BaseModel):
+    """Cleanest hours to run a deferrable job in a region, from recent history."""
+    region: str
+    provider: Provider
+    source: str
+    quality: DataQuality
+    hours_analyzed: int
+    cleanest: list[HourlyCarbon]      # lowest-carbon hours, cleanest first
+    dirtiest_g_co2_per_kwh: Optional[float] = None
+    cleanest_g_co2_per_kwh: Optional[float] = None
+    potential_reduction_pct: Optional[float] = None   # cleanest vs dirtiest
+    note: str = ""
+
+
 class RegionCandidate(BaseModel):
     """One region scored on all three axes — the tri-axis payload."""
     region: str

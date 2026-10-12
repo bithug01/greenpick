@@ -678,3 +678,68 @@ All within ~8% — a plausible consistent picture, vs. the old false ~30% GCP ga
 True parity is impossible (vendors define vCPU/RAM + discounts differently). This achieves
 same-method / same-freshness / same-class = a CONSISTENT DIRECTIONAL comparison, not certified.
 Egress still static per cloud (not refreshed). Still a ballpark, now apples-to-apples.
+
+---
+
+## Secondary sustainability features — prioritized menu (what fits vs. scope-creep)
+
+Litmus for "belongs in GreenPick": grounded in a REAL fetched number + framed as a DESIGN-TIME
+directional tradeoff. Not generic advice, not after-the-fact accounting.
+
+### Tier 1 — natural extensions, low effort, high fit
+- **Carbon-aware scheduling (time-shifting)** — "when today is region X cleanest?" for deferrable
+  jobs (nightly ETL, batch training, backups). Highest-impact lever in the literature; reuses
+  EIA/ENTSO-E (which also expose recent history). *** BUILDING THIS FIRST. ***
+- **Greener instance family** — flag ARM/Graviton / newer-gen as more compute-per-watt
+  ("use m7g instead of m5, ~same price, lower energy"). Specs already in Vantage data.
+
+### Tier 2 — the "pull data more efficiently" idea, split honestly
+- **Data-locality warning (fits)** — "compute far from your data = egress cost + transfer carbon;
+  prefer the greenest region that doesn't force a big data move." Data-driven, complements the
+  region picker. Good.
+- **Generic query/transfer tips (weaker)** — compression, columnar, incremental, caching. Real
+  sustainability advice but NOT grounded in a live number -> drifts toward a generic "green-coding
+  linter," diluting GreenPick's data-grounded identity. Be cautious.
+
+### Tier 3 — plausible, watch scope
+- Embodied-carbon nudge (serverless/shared beats idle always-on VMs for bursty work). Directional, fits.
+- Right-sizing nudge ("8 vCPU asked, 2 suffices") — overlaps cost tools; carbon framing is the distinct angle.
+- Carbon budget / cumulative estimate (extends estimate_workload_carbon) — useful but edges toward
+  the accounting/reporting use case we DON'T serve. Keep clearly directional if ever built.
+
+### Tier 4 — AVOID (scope-creep traps)
+- Full carbon accounting / ESG reporting (paid vendors' audited turf).
+- Live measurement of running infra (needs billing-API integration; not design-time).
+- Anything needing the background-watcher architecture (already rejected for alerting: MCP can't push).
+
+### Common thread
+Build only what reuses a real fetched number and stays design-time + directional. The region picker,
+scheduling, instance-family, and data-locality all pass; generic tips and accounting do not.
+
+---
+
+## Secondary feature #1 BUILT: carbon-aware scheduling (cleanest_hours_to_run)
+
+New MCP tool `cleanest_hours_to_run(provider, region, top_n)`: given a region, returns its cleanest
+recent hours + % carbon reduction vs. the dirtiest hour, so a user can TIME a deferrable job
+(nightly ETL, batch, backups, training) when the grid is greenest. Directional, design-time.
+
+### How (no new endpoint)
+- Added `carbon_history()` to the CarbonRepository Protocol -> list[HourlyCarbon].
+- EIA: the existing carbon_now call already returns ~60+ recent hours; refactored to a shared
+  `_fetch_rows`, then compute weighted intensity PER hour. Zero extra API cost.
+- Mock: synthetic 24h curve (clean overnight/midday, evening peak) so it's testable offline.
+- ENTSO-E (EU): v1 returns the synthetic fallback curve (multi-hour A75 XML parse = flagged TODO);
+  honestly labelled via quality field, not hidden.
+- Auto router + ElectricityMaps stub also implement carbon_history.
+- New scheduling_service.cleanest_hours(); SchedulingAdvice/HourlyCarbon models.
+
+### Live result (real EIA history, verified)
+- NYISO (us-east-nyc): cleanest ~06-08:00 (~228 g); ~31% cut vs dirtiest hour (63 hrs analyzed).
+- Pacific NW (us-west-2): cleanest ~02-03:00 (~41 g); ~82% cut (72 hrs) — hydro grids swing hard.
+That ~82% shows WHEN can matter as much as WHERE for deferrable work — the literature's top lever.
+17/17 tests pass (added mock-curve + EIA-multihour tests). 6 tools now register.
+
+### Honest scope
+US = real hourly history (EIA). EU = synthetic curve placeholder until ENTSO-E multi-hour parsing
+is added (TODO). Flat-grid regions get a "time-shifting won't help, focus on region" note.
