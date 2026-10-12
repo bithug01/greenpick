@@ -61,6 +61,11 @@ explain_methodology_and_limits._
 - ✅ "I'm training a model for ~40 GPU-hours — where and when is that greenest?" — SHIPPED as `estimate_training_carbon` (GPU power table + region ranking + cleanest-hours timing). Verified: 1×H100×40h = 33 kWh, 96% region swing + further ~57% timing.
 - 🔭 "This is a spiky, mostly-idle service — does serverless change the carbon math?" — utilization-aware estimate (idle vs active watts), not flat always-on.
 - 🔭 "Compare container vs VM vs serverless for the same workload's carbon." — needs a per-platform overhead model.
+- 🔭 "What's the carbon of running this LLM inference?" — `estimate_inference_carbon`. The inference-side sibling of `estimate_training_carbon`, and a natural fit: reuses the GPU power table + live grid + the training energy→CO₂ pattern already built.
+  - **Scope it as an ESTIMATOR, not a leaderboard.** Key on **model SIZE CLASS** (~8B / ~70B / ~400B-MoE) + token count + (optional) region — NOT named commercial products. Output directional Wh + gCO₂ for this usage, with the uncertainty stated as loudly as the network-energy coefficient.
+  - **Best framing = self-hosted open-model inference** (Llama/Mistral on your own GPU instance): then energy is grounded in the GPU table + region grid we can actually model, not vendor secrets. The comparison ("an ~8B model is ~Nx less energy than a ~400B for this") emerges naturally without stamping a grade on a product.
+  - **Data-spike first** (like forecasting): published Wh-per-1k-tokens / Wh-per-query estimates vary by >1 order of magnitude and vendors don't disclose serving hardware/batching. Confirm a defensible size-class energy table (cited, directional) BEFORE building. If the data won't support even directional per-class figures, don't ship it.
+  - **Why NOT a comparative "greenness score" of named models (Claude vs GPT vs Llama):** built on numbers vendors won't confirm, stale every model release, and drifts toward disclosure/marketing — the same line we hold against the free-tier comparator and the CFE axis. See anti-questions.
 
 ### Data & storage
 - 🔭 "Where should I put this 5TB bucket to minimize carbon + egress to my users?" — storage-placement counterpart to compute placement; ties into the egress tool.
@@ -89,6 +94,7 @@ GreenPick honest.
 - ❌ "What's the exact egress bill for this transfer?" — we give a directional ballpark on purpose;
   real egress pricing (tiers, inter-region pairs, free allowances) is a quote, not our job.
 - ❌ "Act as a live scheduler / actually move my workload." — design-time advice, not an orchestrator.
+- ❌ "Give me a greenness leaderboard / letter-grade of named commercial LLMs (Claude vs GPT vs Llama)." — built on per-token energy and serving-hardware figures vendors don't disclose, stale every release, drifts into disclosure/marketing. We'll ESTIMATE per-inference carbon by model SIZE CLASS (esp. self-hosted), but not grade named products. Same discipline as the free-tier comparator and CFE axis.
 
 ---
 
