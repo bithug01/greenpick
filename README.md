@@ -44,7 +44,7 @@ Roadmap: forecasting (reactive → planned scheduling), sub-national grid zones,
 
 | Tool | What it does |
 |------|--------------|
-| `compare_regions_tri_axis` | Rank candidate regions by carbon with cost + latency tradeoffs; recommend a pick, each axis rated R/Y/G. |
+| `compare_regions_tri_axis` | Rank candidate regions by carbon with cost + latency tradeoffs; recommend a pick, each axis rated R/Y/G. Pass `regions` to rank only the ones you'd actually consider. |
 | `greener_alternative_to` | "You picked X — the greenest region within +N ms latency is Y (−Z% carbon, Δcost)." The core nudge. |
 | `estimate_workload_carbon` | Rough kgCO₂/month for a workload in a region (an *estimate*, not a measurement). |
 | `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness. |

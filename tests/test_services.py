@@ -38,6 +38,48 @@ def test_carbon_estimate_is_positive_and_scales():
 
 
 @pytest.mark.asyncio
+async def test_recommender_regions_filter_restricts_candidate_set():
+    repo = MockCarbonRepository()
+    user = GeoPoint(lat=38.9, lon=-77.0)
+    wl = Workload(vcpu=2, ram_gb=4)
+    # Only consider two US AWS regions — Sweden (globally cleanest) must NOT appear or win.
+    rec = await recommender.compare_regions(
+        repo, None, user, wl, optimize_for="carbon",
+        regions=["us-east-1", "us-west-2"],
+    )
+    regions_seen = {c.region for c in rec.candidates}
+    assert regions_seen == {"us-east-1", "us-west-2"}
+    assert "eu-north-1" not in regions_seen
+    assert rec.recommended_region in ("aws/us-east-1", "aws/us-west-2")
+
+
+@pytest.mark.asyncio
+async def test_recommender_regions_filter_keeps_baseline_even_if_unlisted():
+    repo = MockCarbonRepository()
+    user = GeoPoint(lat=38.9, lon=-77.0)
+    wl = Workload(vcpu=2, ram_gb=4)
+    # Filter lists only us-west-2, but baseline us-east-1 should be auto-included for comparison.
+    rec = await recommender.compare_regions(
+        repo, None, user, wl, optimize_for="carbon",
+        regions=["us-west-2"], baseline_region="us-east-1",
+    )
+    regions_seen = {c.region for c in rec.candidates}
+    assert regions_seen == {"us-west-2", "us-east-1"}
+
+
+@pytest.mark.asyncio
+async def test_recommender_bogus_regions_filter_explains():
+    repo = MockCarbonRepository()
+    user = GeoPoint(lat=38.9, lon=-77.0)
+    wl = Workload(vcpu=2, ram_gb=4)
+    rec = await recommender.compare_regions(
+        repo, None, user, wl, regions=["nowhere-1", "atlantis-2"],
+    )
+    assert rec.candidates == []
+    assert "matched nothing" in rec.rationale.lower()
+
+
+@pytest.mark.asyncio
 async def test_recommender_prefers_cleaner_region_and_respects_latency_budget():
     repo = MockCarbonRepository()
     user = GeoPoint(lat=38.9, lon=-77.0)  # US East

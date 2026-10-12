@@ -55,12 +55,22 @@ async def compare_regions(
     optimize_for: str = "carbon",       # "carbon" | "balanced"
     max_added_latency_ms: float | None = None,
     baseline_region: str | None = None,
+    regions: list[str] | None = None,   # restrict ranking to these region codes
 ) -> Recommendation:
     wanted = _candidate_providers(providers)
+    # Restrict to a caller-supplied candidate set, if given. Always keep the baseline region in
+    # play (you're implicitly comparing against where you are, even if you didn't list it).
+    region_filter: set[str] | None = None
+    if regions:
+        region_filter = {r for r in regions}
+        if baseline_region:
+            region_filter.add(baseline_region)
 
     candidates: list[RegionCandidate] = []
     for provider, region, _meta in iter_regions():
         if provider not in wanted:
+            continue
+        if region_filter is not None and region not in region_filter:
             continue
         reading = await carbon_service.carbon_now(repo, provider, region)
         cand = RegionCandidate(
@@ -73,7 +83,11 @@ async def compare_regions(
         candidates.append(cand)
 
     if not candidates:
-        return Recommendation(candidates=[], rationale="No known regions matched the request.",
+        hint = ""
+        if region_filter is not None:
+            hint = (f" The region filter {sorted(region_filter)} matched nothing in the catalog "
+                    f"for providers {sorted(wanted)} — check the region codes.")
+        return Recommendation(candidates=[], rationale=f"No known regions matched the request.{hint}",
                               limitations=LIMITATIONS)
 
     # Carbon ranking across the candidate set.

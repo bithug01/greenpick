@@ -31,9 +31,12 @@ async def compare_regions_tri_axis(
     optimize_for: str = "carbon",
     max_added_latency_ms: Optional[float] = None,
     baseline_region: Optional[str] = None,
+    regions: Optional[list[str]] = None,
 ) -> dict:
     """Rank candidate cloud regions by carbon, with cost + latency tradeoffs, and recommend one.
-    Give the user's location (lat/lon) and the service shape (vcpu, ram_gb, egress)."""
+    Give the user's location (lat/lon) and the service shape (vcpu, ram_gb, egress). Pass `regions`
+    (e.g. ["us-east-1","us-west-2","eu-west-1"]) to rank ONLY those you'd actually consider,
+    instead of the whole catalog — your baseline is always kept in the comparison."""
     rec = await recommender.compare_regions(
         _repo,
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
@@ -42,6 +45,7 @@ async def compare_regions_tri_axis(
         optimize_for=optimize_for,
         max_added_latency_ms=max_added_latency_ms,
         baseline_region=baseline_region,
+        regions=[r for r in (regions or [])] or None,
     )
     return rec.model_dump()
 
@@ -56,9 +60,12 @@ async def greener_alternative_to(
     est_monthly_egress_gb: float = 0,
     max_added_latency_ms: float = 100,
     providers: Optional[list[str]] = None,
+    regions: Optional[list[str]] = None,
 ) -> dict:
     """You picked `current_region` — find the greenest region within +max_added_latency_ms,
-    with the carbon/cost/latency delta vs. your current choice. The core 'nudge' tool."""
+    with the carbon/cost/latency delta vs. your current choice. The core 'nudge' tool. Pass
+    `regions` to limit the search to options you'd actually move to; your current region is
+    always included."""
     rec = await recommender.compare_regions(
         _repo,
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
@@ -67,6 +74,7 @@ async def greener_alternative_to(
         optimize_for="carbon",
         max_added_latency_ms=max_added_latency_ms,
         baseline_region=current_region,
+        regions=[r for r in (regions or [])] or None,
     )
     return rec.model_dump()
 
