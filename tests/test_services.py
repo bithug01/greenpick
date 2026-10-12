@@ -318,6 +318,67 @@ async def test_per_axis_ratings_assigned(monkeypatch):
     assert by_carbon[-1].carbon_rating == "red"
 
 
+# --- Data-locality / egress warning ---
+
+from greenpick.services import locality_service
+
+
+@pytest.mark.asyncio
+async def test_locality_same_region_no_penalty():
+    repo = MockCarbonRepository()
+    w = await locality_service.data_locality_check(
+        repo, "aws", "us-east-1", "aws", "us-east-1", monthly_cross_boundary_gb=5000,
+    )
+    assert w.locality == "same_region"
+    assert w.severity == "none"
+    assert w.est_monthly_egress_usd == 0.0
+    assert w.est_monthly_transfer_kg_co2 == 0.0
+
+
+@pytest.mark.asyncio
+async def test_locality_cross_cloud_is_high_and_costs_money():
+    repo = MockCarbonRepository()
+    w = await locality_service.data_locality_check(
+        repo, "gcp", "europe-north1", "aws", "us-east-1", monthly_cross_boundary_gb=2000,
+    )
+    assert w.locality == "cross_cloud"
+    assert w.severity == "high"            # cross-cloud + big volume
+    # egress billed at the data region's rate (aws 0.09) x 2000 GB = 180.0
+    assert abs(w.est_monthly_egress_usd - 180.0) < 0.01
+    assert w.est_monthly_transfer_kg_co2 is not None and w.est_monthly_transfer_kg_co2 > 0
+
+
+@pytest.mark.asyncio
+async def test_locality_cross_region_small_volume_downgrades_severity():
+    repo = MockCarbonRepository()
+    w = await locality_service.data_locality_check(
+        repo, "aws", "us-west-2", "aws", "us-east-1", monthly_cross_boundary_gb=10,
+    )
+    assert w.locality == "cross_region_same_cloud"
+    assert w.severity == "low"             # medium base, <50 GB -> downgraded
+    # aws egress 0.09 x 10 = 0.9
+    assert abs(w.est_monthly_egress_usd - 0.9) < 0.01
+
+
+@pytest.mark.asyncio
+async def test_locality_net_carbon_verdict_backfire_vs_win():
+    repo = MockCarbonRepository()
+    # Big transfer so the move's carbon saving is swamped -> backfire verdict.
+    backfire = await locality_service.data_locality_check(
+        repo, "aws", "eu-north-1", "aws", "us-east-1",
+        monthly_cross_boundary_gb=5000, carbon_saving_kg_co2_from_move=1.0,
+    )
+    assert backfire.net_carbon_verdict is not None
+    assert "backfire" in backfire.net_carbon_verdict.lower() or "worse" in backfire.net_carbon_verdict.lower()
+    # Tiny transfer, large saving -> net win verdict.
+    win = await locality_service.data_locality_check(
+        repo, "aws", "eu-north-1", "aws", "us-east-1",
+        monthly_cross_boundary_gb=5, carbon_saving_kg_co2_from_move=50.0,
+    )
+    assert win.net_carbon_verdict is not None
+    assert "net win" in win.net_carbon_verdict.lower()
+
+
 # --- Carbon-aware scheduling ---
 
 from greenpick.services import scheduling_service

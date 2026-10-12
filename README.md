@@ -34,10 +34,10 @@ eyes open.
 - Latency = **geographic estimate** to a stated user location.
 - **Carbon-aware scheduling** = cleanest recent hours to run a deferrable job.
 - **Greener instance family** = same-size, same-region family that does the work on less energy.
+- **Data-locality / egress check** = warns when moving compute away from your data backfires.
 - **Free data only.** No forecasting, no flow-traced consumption accounting.
 
-Roadmap: ENTSO-E multi-hour EU history (done), data-locality/egress warning, batch/GPU workloads,
-forecasting, sub-national grid zones, CI/CD integration.
+Roadmap: batch/GPU workloads, forecasting, sub-national grid zones, CI/CD integration.
 
 ## MCP tools
 
@@ -49,6 +49,7 @@ forecasting, sub-national grid zones, CI/CD integration.
 | `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness. |
 | `cleanest_hours_to_run` | Carbon-aware scheduling: cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction vs. the dirtiest hour. |
 | `greener_instance_family` | Suggest a greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
+| `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick explicitly does **not** claim. |
 
 ## Data sources (free; swappable behind one interface)

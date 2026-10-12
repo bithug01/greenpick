@@ -1,0 +1,7 @@
+{
+  "_comment": "Directional network data-transfer energy intensity, used ONLY for a secondary 'transfer carbon' signal in the data-locality / egress check. The primary output of that tool is egress COST; this carbon figure is deliberately coarse because the science is unsettled.",
+  "_as_of": "2026-10-12",
+  "kwh_per_gb_transfer": 0.03,
+  "_uncertainty": "WIDE. Published estimates for internet data-transfer energy intensity span ~0.004 to 136 kWh/GB (orders of magnitude). A peer-reviewed 2015 figure was ~0.06 kWh/GB, expected to roughly halve every ~2 years; 0.03 reflects continued efficiency gains. Recent literature argues per-GB intensity is a poor model and that network energy is not directly proportional to data volume. Treat this as order-of-magnitude only.",
+  "_sources": "Aslan et al. 2018 (Electricity Intensity of Internet Data Transmission, ~0.06 kWh/GB for 2015); Whole Grain Digital review (range 0.004-136 kWh/GB); Journal of Industrial Ecology 2024 (power-model critique of per-GB intensity). Not a measurement; replace with a cited, workload-specific model before any non-directional use."
+}

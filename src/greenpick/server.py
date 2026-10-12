@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 7 tools over FastMCP.
+"""MCP server: exposes GreenPick's 8 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -11,7 +11,9 @@ from mcp.server.fastmcp import FastMCP
 
 from .models import Workload, GeoPoint, Provider
 from .data import get_repository
-from .services import carbon_service, recommender, scheduling_service, instance_service
+from .services import (
+    carbon_service, recommender, scheduling_service, instance_service, locality_service,
+)
 
 mcp = FastMCP("greenpick")
 _repo = get_repository()
@@ -137,6 +139,28 @@ async def greener_instance_family(
 
 
 @mcp.tool()
+async def data_locality_egress_check(
+    compute_provider: str,
+    compute_region: str,
+    data_provider: str,
+    data_region: str,
+    monthly_cross_boundary_gb: float,
+    carbon_saving_kg_co2_from_move: Optional[float] = None,
+) -> dict:
+    """Will running compute away from where your DATA lives backfire via egress? Give where
+    compute runs, where the data lives (provider+region), and monthly GB crossing between them.
+    Returns a directional egress-COST ballpark, a coarse transfer-carbon figure, and — if you
+    pass the carbon saving the greener-region move buys — whether it's still a net win. Use this
+    before accepting a greener-region suggestion when your data stays put."""
+    advice = await locality_service.data_locality_check(
+        _repo, compute_provider, compute_region, data_provider, data_region,  # type: ignore[arg-type]
+        monthly_cross_boundary_gb=monthly_cross_boundary_gb,
+        carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
 def explain_methodology_and_limits() -> dict:
     """GreenPick's assumptions and what it explicitly does NOT claim. Read this before trusting a number."""
     return {
@@ -147,6 +171,7 @@ def explain_methodology_and_limits() -> dict:
         "latency": "Great-circle geographic estimate, not a measured ping.",
         "carbon_estimate": "Workload CO2 = documented power model (vCPU/RAM -> watts) x PUE x grid intensity.",
         "instance_family": "Greener-family suggestion uses DIRECTIONAL perf-per-watt multipliers by generation/arch (ARM/Graviton-class = biggest win), not a benchmark of your workload.",
+        "data_locality": "Egress check leads with a DIRECTIONAL cost ballpark (flat per-GB, ignores free tiers/tiered pricing); transfer carbon uses a single kWh/GB coefficient whose published estimates span orders of magnitude — order-of-magnitude only.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
         "data_sources": "Electricity Maps free tier (primary); ENTSO-E / EIA / NESO fallbacks; annual averages offline.",
     }

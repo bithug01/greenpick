@@ -38,6 +38,12 @@ def instance_families() -> dict:
     return json.loads((_DATA_DIR / "instance_families.json").read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def network_model() -> dict:
+    """Directional data-transfer energy intensity (kWh/GB) for the egress carbon signal."""
+    return json.loads((_DATA_DIR / "network.json").read_text(encoding="utf-8"))
+
+
 def iter_regions():
     """Yield (provider, region_code, meta) for every known region."""
     data = regions()

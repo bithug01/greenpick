@@ -82,6 +82,25 @@ class GreenerComputeAdvice(BaseModel):
     limitations: str = ""
 
 
+class DataLocalityWarning(BaseModel):
+    """Whether running compute away from where the data lives will cost you in egress.
+
+    The core 'does the greener-region move backfire?' check. Primary signal is egress COST;
+    transfer carbon is a secondary, deliberately-coarse figure."""
+    compute_location: str                       # "provider/region"
+    data_location: str                          # "provider/region"
+    monthly_cross_boundary_gb: float
+    locality: str                               # "same_region" | "cross_region_same_cloud" | "cross_cloud"
+    severity: str                               # "none" | "low" | "medium" | "high"
+    est_monthly_egress_usd: Optional[float] = None
+    est_monthly_transfer_kg_co2: Optional[float] = None   # secondary, coarse
+    carbon_saving_kg_co2_from_move: Optional[float] = None # echoed back if provided
+    net_carbon_verdict: Optional[str] = None    # set only when a saving was supplied
+    warning: str = ""
+    recommendation: str = ""
+    limitations: str = ""
+
+
 class RegionCandidate(BaseModel):
     """One region scored on all three axes — the tri-axis payload."""
     region: str
