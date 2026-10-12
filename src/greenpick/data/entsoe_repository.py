@@ -62,32 +62,43 @@ class ENTSOERepository:
             cached = hit[1]
             return cached.model_copy(update={"region": region, "provider": provider, "quality": "cached"})
 
-        try:
-            now = datetime.now(timezone.utc)
-            start = now - timedelta(hours=3)   # a few hours back to ensure data exists
-            params = {
-                "securityToken": self._token,
-                "documentType": "A75",
-                "processType": "A16",
-                "in_Domain": eic,
-                "periodStart": start.strftime("%Y%m%d%H%M"),
-                "periodEnd": now.strftime("%Y%m%d%H%M"),
-            }
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(_URL, params=params)
-            if resp.status_code in (401, 403):
-                log.warning("ENTSO-E rejected the token (HTTP %s) — using mock. Check ENTSOE_TOKEN.",
-                            resp.status_code)
-                return await self._fallback.carbon_now(provider, region)
-            resp.raise_for_status()
-            reading = self._xml_to_reading(provider, region, resp.text)
-            if reading is None:
-                return await self._fallback.carbon_now(provider, region)
-            self._cache[eic] = (time.time(), reading)
-            return reading
-        except Exception as e:
-            log.debug("ENTSO-E call failed for EIC %s (%s) — mock fallback", eic, e)
-            return await self._fallback.carbon_now(provider, region)
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(hours=3)   # a few hours back to ensure data exists
+        params = {
+            "securityToken": self._token,
+            "documentType": "A75",
+            "processType": "A16",
+            "in_Domain": eic,
+            "periodStart": start.strftime("%Y%m%d%H%M"),
+            "periodEnd": now.strftime("%Y%m%d%H%M"),
+        }
+
+        # ENTSO-E is occasionally slow / empty for a given zone (their docs warn about response
+        # times). Retry a couple of times before degrading to mock, since a transient miss would
+        # otherwise show a region as mock for the whole cache window.
+        import asyncio
+        attempts = 3
+        for attempt in range(1, attempts + 1):
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(_URL, params=params)
+                if resp.status_code in (401, 403):
+                    log.warning("ENTSO-E rejected the token (HTTP %s) — using mock. Check ENTSOE_TOKEN.",
+                                resp.status_code)
+                    return await self._fallback.carbon_now(provider, region)   # auth: don't retry
+                resp.raise_for_status()
+                reading = self._xml_to_reading(provider, region, resp.text)
+                if reading is not None:
+                    self._cache[eic] = (time.time(), reading)
+                    return reading
+                # 200 but no usable generation (transient empty) -> retry
+                log.debug("ENTSO-E empty/unparseable for %s (attempt %d/%d)", eic, attempt, attempts)
+            except Exception as e:
+                log.debug("ENTSO-E call failed for %s (attempt %d/%d): %s", eic, attempt, attempts, e)
+            if attempt < attempts:
+                await asyncio.sleep(0.6 * attempt)   # brief backoff: 0.6s, 1.2s
+
+        return await self._fallback.carbon_now(provider, region)
 
     def _xml_to_reading(self, provider: Provider, region: str, xml_text: str) -> CarbonReading | None:
         """Parse A75 XML: for each TimeSeries (one production type), take its latest
