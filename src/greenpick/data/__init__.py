@@ -18,5 +18,11 @@ def get_repository() -> CarbonRepository:
     if source == "eia":
         from .eia_repository import EIARepository
         return EIARepository(SETTINGS.eia_api_key, SETTINGS.cache_ttl_seconds)
-    # entsoe: TODO — implement CarbonRepository, then branch here.
+    if source == "entsoe":
+        from .entsoe_repository import ENTSOERepository
+        return ENTSOERepository(SETTINGS.entsoe_token, SETTINGS.cache_ttl_seconds)
+    if source == "auto":
+        # Route per region: EIA for US (eia_ba), ENTSO-E for EU (entsoe_eic), else mock.
+        from .auto_repository import AutoRepository
+        return AutoRepository(SETTINGS.eia_api_key, SETTINGS.entsoe_token, SETTINGS.cache_ttl_seconds)
     return MockCarbonRepository()

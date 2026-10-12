@@ -29,9 +29,10 @@ except Exception:
 
 @dataclass(frozen=True)
 class Settings:
-    carbon_source: str          # mock | electricitymaps | eia | entsoe
+    carbon_source: str          # mock | eia | entsoe | electricitymaps | auto
     electricitymaps_token: str
     eia_api_key: str
+    entsoe_token: str
     cache_ttl_seconds: int
     log_level: str
 
@@ -41,6 +42,7 @@ class Settings:
             carbon_source=os.environ.get("GREENPICK_CARBON_SOURCE", "mock").strip().lower(),
             electricitymaps_token=os.environ.get("ELECTRICITYMAPS_TOKEN", "").strip(),
             eia_api_key=os.environ.get("EIA_API_KEY", "").strip(),
+            entsoe_token=os.environ.get("ENTSOE_TOKEN", "").strip(),
             cache_ttl_seconds=int(os.environ.get("GREENPICK_CACHE_TTL_SECONDS", "1800")),
             log_level=os.environ.get("GREENPICK_LOG_LEVEL", "INFO").strip().upper(),
         )

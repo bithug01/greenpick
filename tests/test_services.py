@@ -169,3 +169,79 @@ async def test_eia_no_key_uses_mock():
     repo = EIARepository(api_key="")
     r = await repo.carbon_now("aws", "us-east-nyc")
     assert r.quality == "mock"
+
+
+# --- ENTSO-E repository: A75 XML -> carbon intensity, verified without token/network ---
+
+from greenpick.data.entsoe_repository import ENTSOERepository
+
+# Minimal A75-shaped XML: two production types (natural gas B04=490, nuclear B14=12),
+# each 1000 MW in the latest point -> weighted mean 251 gCO2/kWh.
+_A75_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<GL_MarketDocument xmlns="urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0">
+  <TimeSeries>
+    <MktPSRType><psrType>B04</psrType></MktPSRType>
+    <Period>
+      <timeInterval><start>2026-10-11T18:00Z</start></timeInterval>
+      <Point><position>1</position><quantity>900</quantity></Point>
+      <Point><position>2</position><quantity>1000</quantity></Point>
+    </Period>
+  </TimeSeries>
+  <TimeSeries>
+    <MktPSRType><psrType>B14</psrType></MktPSRType>
+    <Period>
+      <timeInterval><start>2026-10-11T18:00Z</start></timeInterval>
+      <Point><position>1</position><quantity>1000</quantity></Point>
+    </Period>
+  </TimeSeries>
+</GL_MarketDocument>"""
+
+
+@pytest.mark.asyncio
+async def test_entsoe_xml_to_carbon_intensity(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params.get("in_Domain") == "10YSE-1--------K"  # Sweden EIC
+        assert request.url.params.get("documentType") == "A75"
+        return httpx.Response(200, text=_A75_XML)
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = ENTSOERepository(token="tok")
+    r = await repo.carbon_now("aws", "eu-north-1")   # Sweden
+    assert r.source == "entsoe"
+    assert r.quality == "live"
+    # gas latest point = 1000 (position 2), nuclear = 1000 -> (490+12)/2 = 251
+    assert abs(r.g_co2_per_kwh - 251.0) < 0.5
+
+
+@pytest.mark.asyncio
+async def test_entsoe_non_eu_region_falls_back_to_mock():
+    repo = ENTSOERepository(token="tok")
+    r = await repo.carbon_now("aws", "us-east-1")    # no entsoe_eic -> mock
+    assert r.quality == "mock"
+
+
+@pytest.mark.asyncio
+async def test_auto_router_picks_source_by_region(monkeypatch):
+    from greenpick.data.auto_repository import AutoRepository
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        if "eia.gov" in host:
+            return httpx.Response(200, json={"response": {"data": [
+                {"period": "2026-10-11T18", "fueltype": "NG", "value": "1000"},
+            ]}})
+        # entsoe
+        return httpx.Response(200, text=_A75_XML)
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = AutoRepository(eia_key="k", entsoe_token="t")
+    us = await repo.carbon_now("aws", "us-east-1")      # -> EIA
+    eu = await repo.carbon_now("aws", "eu-north-1")     # -> ENTSO-E
+    syd = await repo.carbon_now("aws", "ap-southeast-2")  # -> mock
+    assert us.source == "eia"
+    assert eu.source == "entsoe"
+    assert syd.quality == "mock"

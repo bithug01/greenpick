@@ -17,5 +17,19 @@
     "COL": "Coal", "NG": "Natural gas", "OIL": "Petroleum", "OTH": "Other",
     "NUC": "Nuclear", "WAT": "Hydro", "WND": "Wind", "SUN": "Solar",
     "GEO": "Geothermal", "BIO": "Biomass"
+  },
+  "_comment_entsoe": "Maps ENTSO-E A75 psrType codes to the same per-fuel factors above, so the EU source reuses one emission-factor table. B-codes per ENTSO-E standard.",
+  "entsoe_psrtype_to_factor": {
+    "B01": 230, "B02": 820, "B03": 490, "B04": 490, "B05": 820, "B06": 650,
+    "B07": 650, "B08": 650, "B09": 38, "B10": 24, "B11": 24, "B12": 24,
+    "B14": 12, "B15": 230, "B16": 48, "B17": 230, "B18": 11, "B19": 11, "B20": 24
+  },
+  "_entsoe_psrtype_names": {
+    "B01": "Biomass", "B02": "Lignite", "B03": "Coal gas", "B04": "Natural gas",
+    "B05": "Hard coal", "B06": "Oil", "B07": "Oil shale", "B08": "Peat",
+    "B09": "Geothermal", "B10": "Hydro pumped storage", "B11": "Hydro run-of-river",
+    "B12": "Hydro reservoir", "B14": "Nuclear", "B15": "Other renewable",
+    "B16": "Solar", "B17": "Waste", "B18": "Wind offshore", "B19": "Wind onshore",
+    "B20": "Other"
   }
 }
