@@ -1,0 +1,26 @@
+{
+  "_comment": "Directional power model for datacenter GPU/accelerator training, used to estimate the energy (kWh) of a training run so it can be placed in a greener region and/or timed to the cleanest hours. tdp_watts are PUBLISHED peak board power (TDP) from NVIDIA datasheets and corroborating sources; a training run does NOT sit at TDP the whole time, so energy = tdp_watts * gpu_count * default_utilization * hours, plus a per-GPU host overhead, all x datacenter PUE at calc time. ORDER-OF-MAGNITUDE, directional estimates. NOT measured for your model/run. Replace with measured power telemetry before any non-directional use.",
+  "_as_of": "2026-10-12",
+  "_sources": "NVIDIA datasheets/product pages (A100 400W SXM; H100 700W SXM / 350W PCIe; H200 700W; T4 70W; L4 72W; V100 300W SXM; L40S 350W; B200 ~1000W; GB200 superchip ~1200W). Corroborated across NVIDIA, thundercompute, cyfuture, semianalysis, gmicloud (2024-2026). Values rounded.",
+  "_method": {
+    "formula": "energy_kwh = (sum over GPUs of [tdp_watts * utilization + host_overhead_watts_per_gpu]) / 1000 * gpu_hours_per_gpu * pue",
+    "utilization_note": "TDP is PEAK board power. Sustained training typically averages below TDP; default_utilization (0.85) is a documented directional assumption, overridable per call.",
+    "host_overhead_note": "Each accelerator is fed by host CPU/RAM/NIC/storage; host_overhead_watts_per_gpu is a rough per-GPU allocation of that non-GPU server draw. Directional.",
+    "pue_note": "Datacenter overhead multiplier taken from power.json pue_default at calculation time (not duplicated here)."
+  },
+  "default_utilization": 0.85,
+  "host_overhead_watts_per_gpu": 100,
+  "gpus": {
+    "t4":    { "name": "NVIDIA T4",        "arch": "Turing", "tdp_watts": 70,   "class": "inference", "aliases": ["tesla-t4"] },
+    "l4":    { "name": "NVIDIA L4",        "arch": "Ada Lovelace", "tdp_watts": 72, "class": "inference", "aliases": [] },
+    "v100":  { "name": "NVIDIA V100 (SXM)", "arch": "Volta", "tdp_watts": 300,  "class": "training", "aliases": ["tesla-v100"] },
+    "l40s":  { "name": "NVIDIA L40S",      "arch": "Ada Lovelace", "tdp_watts": 350, "class": "training/graphics", "aliases": ["l40"] },
+    "a100":  { "name": "NVIDIA A100 (SXM 80GB)", "arch": "Ampere", "tdp_watts": 400, "class": "training", "aliases": ["a100-80gb", "a100-sxm"] },
+    "a100-pcie": { "name": "NVIDIA A100 (PCIe)", "arch": "Ampere", "tdp_watts": 300, "class": "training", "aliases": [] },
+    "h100":  { "name": "NVIDIA H100 (SXM)", "arch": "Hopper", "tdp_watts": 700, "class": "training", "aliases": ["h100-sxm"] },
+    "h100-pcie": { "name": "NVIDIA H100 (PCIe)", "arch": "Hopper", "tdp_watts": 350, "class": "training", "aliases": [] },
+    "h200":  { "name": "NVIDIA H200",      "arch": "Hopper", "tdp_watts": 700,  "class": "training", "aliases": [] },
+    "b200":  { "name": "NVIDIA B200",      "arch": "Blackwell", "tdp_watts": 1000, "class": "training", "aliases": [] },
+    "gb200": { "name": "NVIDIA GB200 Superchip", "arch": "Blackwell", "tdp_watts": 1200, "class": "training", "aliases": ["gb200-superchip"], "_note": "Two Blackwell GPUs + Grace CPU; TDP is the combined superchip." }
+  }
+}
