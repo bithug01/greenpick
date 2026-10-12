@@ -1,0 +1,21 @@
+{
+  "_comment": "Per-fuel carbon intensity (gCO2eq/kWh), used to turn an EIA fuel-generation mix into a weighted grid carbon intensity. Order-of-magnitude lifecycle-style figures consistent with public literature (IPCC AR5 medians etc.). DIRECTIONAL estimates, not audited factors. Keys are EIA fueltype codes.",
+  "_source": "IPCC AR5 lifecycle emissions medians (approx), rounded. Replace with cited values before any non-directional use.",
+  "factors_g_co2_per_kwh": {
+    "COL": 820,
+    "NG":  490,
+    "OIL": 650,
+    "OTH": 700,
+    "NUC": 12,
+    "WAT": 24,
+    "WND": 11,
+    "SUN": 48,
+    "GEO": 38,
+    "BIO": 230
+  },
+  "_fuel_names": {
+    "COL": "Coal", "NG": "Natural gas", "OIL": "Petroleum", "OTH": "Other",
+    "NUC": "Nuclear", "WAT": "Hydro", "WND": "Wind", "SUN": "Solar",
+    "GEO": "Geothermal", "BIO": "Biomass"
+  }
+}

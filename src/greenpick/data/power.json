@@ -1,0 +1,7 @@
+{
+  "_comment": "Simple, documented power model for the carbon ESTIMATE. Turns a workload (vCPU, RAM) into average watts, then kWh/month. These are deliberately rough published-style coefficients; this is an estimate, not a measurement. PUE is the datacenter overhead multiplier.",
+  "watts_per_vcpu": 3.5,
+  "watts_per_gb_ram": 0.4,
+  "pue_default": 1.2,
+  "_sources": "Coefficients are order-of-magnitude figures consistent with public cloud power-model literature (e.g. Cloud Carbon Footprint methodology). Replace with cited values before any non-directional use."
+}

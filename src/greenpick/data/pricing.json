@@ -1,0 +1,20 @@
+{
+  "_comment": "DATED, STATIC pricing ballpark for v1. Deterministic — the LLM must never invent these. Figures are rough on-demand approximations for a general-purpose vCPU+RAM service and per-GB internet egress; refresh periodically and update _as_of. NOT a quote.",
+  "_as_of": "2026-10-10",
+  "_units": { "compute": "USD per vCPU-hour and USD per GB-RAM-hour", "egress": "USD per GB to internet" },
+  "aws": {
+    "compute_usd_per_vcpu_hour": 0.034,
+    "compute_usd_per_gb_ram_hour": 0.0045,
+    "egress_usd_per_gb": 0.09
+  },
+  "gcp": {
+    "compute_usd_per_vcpu_hour": 0.032,
+    "compute_usd_per_gb_ram_hour": 0.0043,
+    "egress_usd_per_gb": 0.085
+  },
+  "azure": {
+    "compute_usd_per_vcpu_hour": 0.035,
+    "compute_usd_per_gb_ram_hour": 0.0046,
+    "egress_usd_per_gb": 0.087
+  }
+}
