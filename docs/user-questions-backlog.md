@@ -52,7 +52,7 @@ explain_methodology_and_limits._
 - 🔭 "Batch this across the cleanest hours until it's done" — a *plan* (list of hour-slots summing to N compute-hours), not just the single cleanest hour.
 
 ### Workload shape (beyond the one always-on web service)
-- 🔭 "I'm training a model for ~40 GPU-hours — where and when is that greenest?" — GPU instance power model + the region/scheduling axes combined. Big: training is where carbon actually bites.
+- ✅ "I'm training a model for ~40 GPU-hours — where and when is that greenest?" — SHIPPED as `estimate_training_carbon` (GPU power table + region ranking + cleanest-hours timing). Verified: 1×H100×40h = 33 kWh, 96% region swing + further ~57% timing.
 - 🔭 "This is a spiky, mostly-idle service — does serverless change the carbon math?" — utilization-aware estimate (idle vs active watts), not flat always-on.
 - 🔭 "Compare container vs VM vs serverless for the same workload's carbon." — needs a per-platform overhead model.
 

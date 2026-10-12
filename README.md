@@ -35,9 +35,10 @@ eyes open.
 - **Carbon-aware scheduling** = cleanest recent hours to run a deferrable job.
 - **Greener instance family** = same-size, same-region family that does the work on less energy.
 - **Data-locality / egress check** = warns when moving compute away from your data backfires.
+- **GPU training carbon** = energy + CO₂ of a training run, with greener region + cleanest-hours timing.
 - **Free data only.** No forecasting, no flow-traced consumption accounting.
 
-Roadmap: batch/GPU workloads, forecasting, sub-national grid zones, CI/CD integration.
+Roadmap: forecasting (reactive → planned scheduling), sub-national grid zones, CI/CD integration.
 
 ## MCP tools
 
@@ -50,6 +51,7 @@ Roadmap: batch/GPU workloads, forecasting, sub-national grid zones, CI/CD integr
 | `cleanest_hours_to_run` | Carbon-aware scheduling: cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction vs. the dirtiest hour. |
 | `greener_instance_family` | Suggest a greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
 | `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
+| `estimate_training_carbon` | Carbon of a GPU training run (TDP-based energy × live grid), with greener **where** (region ranking) + **when** (cleanest hours) — the two levers that compound for portable, deferrable training. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick explicitly does **not** claim. |
 
 ## Data sources (free; swappable behind one interface)

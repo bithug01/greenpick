@@ -318,6 +318,67 @@ async def test_per_axis_ratings_assigned(monkeypatch):
     assert by_carbon[-1].carbon_rating == "red"
 
 
+# --- GPU training carbon (placement + timing) ---
+
+from greenpick.services import training_service
+
+
+def test_training_energy_scales_with_gpu_hours_and_tdp():
+    # gpu_hours is TOTAL accelerator-hours, so more total hours = more energy.
+    e_small = training_service.run_energy_kwh("a100", gpu_count=1, gpu_hours=10, utilization=0.85)
+    e_big = training_service.run_energy_kwh("a100", gpu_count=8, gpu_hours=80, utilization=0.85)
+    assert e_big > e_small
+    # Higher-TDP card draws more for the same GPU-hours.
+    e_a100 = training_service.run_energy_kwh("a100", 1, 40, 0.85)   # 400W
+    e_h100 = training_service.run_energy_kwh("h100", 1, 40, 0.85)   # 700W
+    assert e_h100 > e_a100
+    # Hand-check: 1x H100, 40 GPU-h -> (700*0.85 + 100)/1000 * 40 * 1.2 = 33.36 kWh
+    assert abs(e_h100 - 33.36) < 0.1
+
+
+@pytest.mark.asyncio
+async def test_training_ranks_regions_greenest_first_and_times_them():
+    repo = MockCarbonRepository()
+    adv = await training_service.estimate_training_carbon(
+        repo, gpu="h100", gpu_count=1, gpu_hours=40,  # no region -> rank
+    )
+    assert adv.gpu == "h100"
+    assert adv.est_energy_kwh > 0
+    # Greenest-first ordering by run CO2.
+    kgs = [o.est_kg_co2 for o in adv.options]
+    assert kgs == sorted(kgs)
+    assert adv.recommended_region is not None
+    # Sweden (mock SE=25) should be the greenest option -> recommended.
+    assert "eu-north-1" in adv.recommended_region or "swedencentral" in adv.recommended_region
+    # Ratings assigned; greenest is green.
+    assert adv.options[0].rating == "green"
+    # Timing filled in for the greenest region (mock history = 24h synthetic).
+    assert adv.timing_quality == "mock"
+    assert len(adv.cleanest_hours) == 3
+
+
+@pytest.mark.asyncio
+async def test_training_specific_region_uses_that_region():
+    repo = MockCarbonRepository()
+    adv = await training_service.estimate_training_carbon(
+        repo, gpu="a100", gpu_count=2, gpu_hours=40, region="us-east-1",
+    )
+    assert adv.region == "us-east-1"
+    assert adv.recommended_region == "aws/us-east-1"
+    assert len(adv.options) == 1
+    assert adv.options[0].est_kg_co2 > 0
+
+
+@pytest.mark.asyncio
+async def test_training_unknown_gpu_is_handled():
+    repo = MockCarbonRepository()
+    adv = await training_service.estimate_training_carbon(
+        repo, gpu="rtx-9999", gpu_count=1, gpu_hours=10,
+    )
+    assert adv.est_energy_kwh == 0.0
+    assert "unknown gpu" in adv.rationale.lower()
+
+
 # --- Data-locality / egress warning ---
 
 from greenpick.services import locality_service

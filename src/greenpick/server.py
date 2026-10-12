@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 8 tools over FastMCP.
+"""MCP server: exposes GreenPick's 9 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -13,6 +13,7 @@ from .models import Workload, GeoPoint, Provider
 from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
+    training_service,
 )
 
 mcp = FastMCP("greenpick")
@@ -161,6 +162,29 @@ async def data_locality_egress_check(
 
 
 @mcp.tool()
+async def estimate_training_carbon(
+    gpu: str,
+    gpu_count: int,
+    gpu_hours: float,
+    region: Optional[str] = None,
+    provider: Optional[str] = None,
+    utilization: Optional[float] = None,
+    top_n_regions: int = 5,
+) -> dict:
+    """Carbon of a GPU training run, with greener WHERE (region) and WHEN (hours) guidance.
+    Give the GPU (e.g. 'a100', 'h100', 'l4'), how many, and total GPU-hours for the run. Omit
+    `region` to rank regions greenest-first; pass one to score just that region. Training is both
+    portable and deferrable, so this combines region choice with cleanest-hours timing. Directional
+    (TDP-based energy); GPU availability per region is NOT checked - verify your card is offered there."""
+    advice = await training_service.estimate_training_carbon(
+        _repo, gpu, gpu_count, gpu_hours,  # type: ignore[arg-type]
+        region=region, provider=provider, utilization=utilization,  # type: ignore[arg-type]
+        top_n_regions=top_n_regions,
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
 def explain_methodology_and_limits() -> dict:
     """GreenPick's assumptions and what it explicitly does NOT claim. Read this before trusting a number."""
     return {
@@ -172,6 +196,7 @@ def explain_methodology_and_limits() -> dict:
         "carbon_estimate": "Workload CO2 = documented power model (vCPU/RAM -> watts) x PUE x grid intensity.",
         "instance_family": "Greener-family suggestion uses DIRECTIONAL perf-per-watt multipliers by generation/arch (ARM/Graviton-class = biggest win), not a benchmark of your workload.",
         "data_locality": "Egress check leads with a DIRECTIONAL cost ballpark (flat per-GB, ignores free tiers/tiered pricing); transfer carbon uses a single kWh/GB coefficient whose published estimates span orders of magnitude — order-of-magnitude only.",
+        "training": "Training carbon uses published GPU TDP (peak, not your run's measured draw) x a utilization assumption + host overhead x PUE, then x the region's grid intensity. GPU availability per region is NOT checked. Ignores spot/on-demand, checkpointing, multi-node networking.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
         "data_sources": "Electricity Maps free tier (primary); ENTSO-E / EIA / NESO fallbacks; annual averages offline.",
     }

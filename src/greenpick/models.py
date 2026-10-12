@@ -82,6 +82,39 @@ class GreenerComputeAdvice(BaseModel):
     limitations: str = ""
 
 
+class TrainingRegionOption(BaseModel):
+    """One region as a place to run a training job, with its carbon for this run."""
+    provider: Provider
+    region: str
+    grid_intensity_g_co2_per_kwh: float
+    carbon_source: str
+    carbon_quality: str
+    est_kg_co2: float                            # for the whole run, in this region
+    vs_baseline_pct: Optional[float] = None      # negative = cleaner than baseline/current
+    rating: Optional[str] = None                 # "green" | "yellow" | "red", relative
+
+
+class TrainingCarbonAdvice(BaseModel):
+    """Carbon of a GPU training run, with greener WHERE (region) and WHEN (hours) guidance."""
+    gpu: str                                      # canonical GPU key
+    gpu_name: str
+    gpu_count: int
+    gpu_hours: float                              # total accelerator-hours for the run
+    utilization: float
+    est_energy_kwh: float
+    # Placement:
+    region: Optional[str] = None                  # the resolved/queried region (if one was given)
+    options: list[TrainingRegionOption] = []      # ranked greener-first (when ranking regions)
+    recommended_region: Optional[str] = None
+    # Timing (reuses cleanest-hours scheduling for the chosen/greenest region):
+    cleanest_hours: list[HourlyCarbon] = []
+    timing_reduction_pct: Optional[float] = None
+    timing_source: Optional[str] = None
+    timing_quality: Optional[str] = None
+    rationale: str = ""
+    limitations: str = ""
+
+
 class DataLocalityWarning(BaseModel):
     """Whether running compute away from where the data lives will cost you in egress.
 
