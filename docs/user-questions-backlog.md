@@ -47,7 +47,7 @@ explain_methodology_and_limits._
 ## New — the seeds of future tools
 
 ### Scheduling / time
-- 🔭 "What's the carbon forecast for a region over the next 24h?" — forecasting. Turns scheduling from *reactive* to *planned*. **Data spike done (2026-10-12), findings below.**
+- ✅ "What's the carbon forecast for a region over the next 24h?" — SHIPPED as `carbon_forecast` (ENTSO-E A69 renewable-curve ranking, EU true-forecast + share where load exists; US degrades to historical). Verified live: SE 69% renewable-share peak, IE wind-MW peak, us-west-2 historical fallback. **Spike findings below.**
 
 > **Forecasting data spike (ENTSO-E, live-probed):**
 > - ✅ **A69 wind+solar day-ahead forecast** is reliable across zones: SE returns ~99 hourly points (several days), IE ~26h. psrType B16 (solar) + B19 (wind). This is the dependable signal.

@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 10 tools over FastMCP.
+"""MCP server: exposes GreenPick's 11 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -13,7 +13,7 @@ from .models import Workload, GeoPoint, Provider
 from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
-    training_service,
+    training_service, forecast_service,
 )
 
 mcp = FastMCP("greenpick")
@@ -176,6 +176,21 @@ async def data_locality_egress_check(
 
 
 @mcp.tool()
+async def carbon_forecast(
+    provider: str, region: str, hours_ahead: int = 24, top_n: int = 5,
+) -> dict:
+    """Forward-looking scheduling: which UPCOMING hours will be cleanest? Uses the EU day-ahead
+    wind+solar forecast (ENTSO-E) to rank the greenest hours over the next `hours_ahead`. This is
+    a RELATIVE ranking (more forecast renewables = cleaner), not an absolute gCO2/kWh forecast.
+    EU regions get a true forecast; US/uncovered regions degrade to the recent historical pattern
+    (labelled 'historical'). Use this to PLAN a deferrable job, vs cleanest_hours_to_run (reactive)."""
+    advice = await forecast_service.carbon_forecast(
+        _repo, provider, region, hours_ahead=hours_ahead, top_n=top_n,  # type: ignore[arg-type]
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
 async def cleanest_time_of_day(provider: str, region: str) -> dict:
     """For a RECURRING job (e.g. a nightly batch you run every day), find the region's cleanest
     time of day — each hour-of-day averaged across the recent days of data. Returns the cleanest/
@@ -221,6 +236,7 @@ def explain_methodology_and_limits() -> dict:
         "instance_family": "Greener-family suggestion uses DIRECTIONAL perf-per-watt multipliers by generation/arch (ARM/Graviton-class = biggest win), not a benchmark of your workload.",
         "data_locality": "Egress check leads with a DIRECTIONAL cost ballpark (flat per-GB, ignores free tiers/tiered pricing); transfer carbon uses a single kWh/GB coefficient whose published estimates span orders of magnitude — order-of-magnitude only.",
         "training": "Training carbon uses published GPU TDP (peak, not your run's measured draw) x a utilization assumption + host overhead x PUE, then x the region's grid intensity. GPU availability per region is NOT checked. Ignores spot/on-demand, checkpointing, multi-node networking.",
+        "forecast": "Day-ahead forecast is RELATIVE: upcoming hours ranked by forecast wind+solar output (ENTSO-E A69), not an absolute gCO2/kWh forecast. EU only; US/uncovered zones degrade to the recent historical pattern (labelled 'historical').",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
         "data_sources": "Electricity Maps free tier (primary); ENTSO-E / EIA / NESO fallbacks; annual averages offline.",
     }

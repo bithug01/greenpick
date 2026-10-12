@@ -9,7 +9,9 @@ from pydantic import BaseModel, Field
 
 
 Provider = Literal["aws", "gcp", "azure"]
-DataQuality = Literal["live", "live_estimated", "cached", "annual_average", "mock"]
+DataQuality = Literal[
+    "live", "live_estimated", "cached", "annual_average", "mock", "forecast", "historical",
+]
 
 
 class Workload(BaseModel):
@@ -39,6 +41,30 @@ class HourlyCarbon(BaseModel):
     """One hour's grid carbon intensity, for scheduling deferrable work."""
     period: str                       # the hour label from the source (e.g. "2026-10-12T03")
     g_co2_per_kwh: float
+
+
+class ForecastHour(BaseModel):
+    """One upcoming hour's forecast renewable output (the relative-cleanliness signal)."""
+    period: str                        # ISO hour the forecast applies to (UTC)
+    renewable_mw: float                # forecast wind+solar MW for that hour
+    renewable_share: Optional[float] = None   # renewables / load, 0..1, when load is available
+
+
+class ForecastAdvice(BaseModel):
+    """Forward-looking cleanest hours from the day-ahead renewable forecast.
+
+    RELATIVE, not absolute: ranks upcoming hours by forecast wind+solar output (more renewables =
+    cleaner). Not a gCO2/kWh forecast — the free data doesn't support that reliably across zones."""
+    region: str
+    provider: Provider
+    source: str                        # "entsoe_forecast" | "historical_fallback" | "mock"
+    quality: DataQuality               # "forecast" | "historical" | "mock"
+    hours_ahead: int
+    cleanest_upcoming: list[ForecastHour] = []   # greenest upcoming hours, cleanest first
+    peak_renewable_period: Optional[str] = None
+    low_renewable_period: Optional[str] = None
+    note: str = ""
+    limitations: str = ""
 
 
 class CleanestWindow(BaseModel):

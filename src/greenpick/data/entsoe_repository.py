@@ -22,7 +22,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
-from ..models import CarbonReading, Provider, HourlyCarbon
+from ..models import CarbonReading, Provider, HourlyCarbon, ForecastHour
 from .mock_repository import MockCarbonRepository
 from .static_data import region_meta, emission_factors
 
@@ -137,6 +137,130 @@ class ENTSOERepository:
             if attempt < attempts:
                 await asyncio.sleep(0.6 * attempt)   # brief backoff: 0.6s, 1.2s
         return None
+
+    async def _fetch_forecast_xml(self, eic: str, document_type: str, hours_ahead: int,
+                                  load: bool = False) -> str | None:
+        """Fetch a day-ahead FORWARD forecast document (periodStart=now). document_type is e.g.
+        'A69' (wind+solar) or 'A65' (load). Load uses outBiddingZone_Domain, generation uses
+        in_Domain. Returns body text or None (auth fail / exhausted retries / empty)."""
+        now = datetime.now(timezone.utc)
+        end = now + timedelta(hours=hours_ahead)
+        params = {
+            "securityToken": self._token,
+            "documentType": document_type,
+            "processType": "A01",   # day-ahead
+            "periodStart": now.strftime("%Y%m%d%H%M"),
+            "periodEnd": end.strftime("%Y%m%d%H%M"),
+        }
+        params["outBiddingZone_Domain" if load else "in_Domain"] = eic
+
+        import asyncio
+        attempts = 3
+        for attempt in range(1, attempts + 1):
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(_URL, params=params)
+                if resp.status_code in (401, 403):
+                    log.warning("ENTSO-E rejected the token (HTTP %s) on forecast — using fallback.",
+                                resp.status_code)
+                    return None
+                resp.raise_for_status()
+                if resp.text and "<TimeSeries" in resp.text:
+                    return resp.text
+                # 'No matching data' (common for A65 in some zones) is not retryable — bail quietly.
+                if "No matching data" in resp.text:
+                    log.debug("ENTSO-E %s: no matching data for %s", document_type, eic)
+                    return None
+                log.debug("ENTSO-E %s empty for %s (attempt %d/%d)", document_type, eic, attempt, attempts)
+            except Exception as e:
+                log.debug("ENTSO-E %s failed for %s (attempt %d/%d): %s",
+                          document_type, eic, attempt, attempts, e)
+            if attempt < attempts:
+                await asyncio.sleep(0.6 * attempt)
+        return None
+
+    async def renewable_forecast(self, provider: Provider, region: str, hours_ahead: int = 24
+                                 ) -> list[ForecastHour]:
+        """Forward-looking renewable (wind+solar) output forecast per hour, for 'which upcoming
+        hours are cleaner' scheduling. Uses A69 (reliable across zones); where A65 load is also
+        available, adds a renewable-share ratio. Returns [] if no token/EIC/forecast (caller
+        falls back to the historical pattern). RELATIVE signal, not a gCO2/kWh forecast."""
+        meta = region_meta(provider, region) or {}
+        eic = meta.get("entsoe_eic")
+        if not self._token or not eic:
+            return []
+
+        a69 = await self._fetch_forecast_xml(eic, "A69", hours_ahead, load=False)
+        if a69 is None:
+            return []
+        renew_by_hour = self._forecast_mw_by_hour(a69)   # sums wind+solar across its TimeSeries
+        if not renew_by_hour:
+            return []
+
+        # Optional refinement: load forecast (A65) -> renewable share. Best-effort; many zones 404.
+        load_by_hour: dict[str, float] = {}
+        a65 = await self._fetch_forecast_xml(eic, "A65", hours_ahead, load=True)
+        if a65 is not None:
+            load_by_hour = self._forecast_mw_by_hour(a65)
+
+        out: list[ForecastHour] = []
+        for hour_iso in sorted(renew_by_hour):
+            mw = round(renew_by_hour[hour_iso], 1)
+            share = None
+            load = load_by_hour.get(hour_iso)
+            if load and load > 0:
+                share = round(min(1.0, mw / load), 3)
+            out.append(ForecastHour(period=hour_iso, renewable_mw=mw, renewable_share=share))
+        return out
+
+    def _forecast_mw_by_hour(self, xml_text: str) -> dict[str, float]:
+        """Parse a forecast document (A69/A65) into {hour_iso -> summed MW}. Sums across all
+        TimeSeries (e.g. wind + solar), mapping each Point's position to its hour via the period
+        start + resolution. Sub-hourly points are summed into their hour (then we'd double-count,
+        so we AVERAGE within an hour per TimeSeries instead — see below)."""
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            return {}
+
+        totals: dict[str, float] = {}
+        for ts in root.iter():
+            if _strip_ns(ts.tag) != "TimeSeries":
+                continue
+            for el in ts.iter():
+                if _strip_ns(el.tag) != "Period":
+                    continue
+                start_dt = None
+                resolution_min = 60
+                for c in el.iter():
+                    ct = _strip_ns(c.tag)
+                    if ct == "start" and c.text and start_dt is None:
+                        start_dt = _parse_interval_start(c.text)
+                    elif ct == "resolution" and c.text:
+                        resolution_min = _resolution_minutes(c.text)
+                if start_dt is None:
+                    continue
+                # Collect per-hour: average sub-hourly points within an hour (MW is a rate, not a
+                # sum over sub-intervals), then add this TimeSeries' hourly value to the total.
+                hour_vals: dict[str, list[float]] = {}
+                for pt in el.iter():
+                    if _strip_ns(pt.tag) != "Point":
+                        continue
+                    pos = qty = None
+                    for c in pt:
+                        ct = _strip_ns(c.tag)
+                        if ct == "position" and c.text:
+                            pos = int(c.text)
+                        elif ct == "quantity" and c.text:
+                            qty = float(c.text)
+                    if pos is None or qty is None:
+                        continue
+                    point_dt = start_dt + timedelta(minutes=(pos - 1) * resolution_min)
+                    hour_iso = point_dt.strftime("%Y-%m-%dT%H")
+                    hour_vals.setdefault(hour_iso, []).append(qty)
+                for hour_iso, vals in hour_vals.items():
+                    totals[hour_iso] = totals.get(hour_iso, 0.0) + sum(vals) / len(vals)
+        return totals
 
     async def carbon_history(self, provider: Provider, region: str) -> list[HourlyCarbon]:
         """Recent hourly carbon intensity for an EU zone, for scheduling deferrable work.

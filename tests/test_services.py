@@ -421,6 +421,110 @@ async def test_training_unknown_gpu_is_handled():
     assert "unknown gpu" in adv.rationale.lower()
 
 
+# --- Forward-looking forecast ---
+
+from greenpick.services import forecast_service
+
+
+@pytest.mark.asyncio
+async def test_forecast_degrades_to_historical_without_forecast_source():
+    # MockCarbonRepository has no renewable_forecast -> service falls back to historical pattern.
+    repo = MockCarbonRepository()
+    adv = await forecast_service.carbon_forecast(repo, "aws", "us-east-1", hours_ahead=24)
+    assert adv.source == "historical_fallback"
+    assert adv.quality == "historical"
+    assert adv.cleanest_upcoming == []
+    assert "historical" in adv.note.lower()
+
+
+# A69-shaped forecast XML: wind (B19) + solar (B16), hourly, 3 hours. Hour 2 has the most wind.
+_A69_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<GL_MarketDocument xmlns="urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0">
+  <TimeSeries>
+    <MktPSRType><psrType>B19</psrType></MktPSRType>
+    <Period>
+      <timeInterval><start>2026-10-13T00:00Z</start><end>2026-10-13T03:00Z</end></timeInterval>
+      <resolution>PT60M</resolution>
+      <Point><position>1</position><quantity>1000</quantity></Point>
+      <Point><position>2</position><quantity>1500</quantity></Point>
+      <Point><position>3</position><quantity>3000</quantity></Point>
+    </Period>
+  </TimeSeries>
+  <TimeSeries>
+    <MktPSRType><psrType>B16</psrType></MktPSRType>
+    <Period>
+      <timeInterval><start>2026-10-13T00:00Z</start><end>2026-10-13T03:00Z</end></timeInterval>
+      <resolution>PT60M</resolution>
+      <Point><position>1</position><quantity>0</quantity></Point>
+      <Point><position>2</position><quantity>200</quantity></Point>
+      <Point><position>3</position><quantity>100</quantity></Point>
+    </Period>
+  </TimeSeries>
+</GL_MarketDocument>"""
+
+
+@pytest.mark.asyncio
+async def test_entsoe_renewable_forecast_parses_and_sums(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        dt = request.url.params.get("documentType")
+        if dt == "A69":
+            return httpx.Response(200, text=_A69_XML)
+        # A65 load not available for this zone -> empty, like Ireland in the spike.
+        return httpx.Response(200, text="<x>No matching data found</x>")
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = ENTSOERepository(token="tok")
+    hours = await repo.renewable_forecast("aws", "eu-north-1", hours_ahead=3)
+    by = {h.period: h.renewable_mw for h in hours}
+    # wind+solar summed per hour: H00=1000, H01=1700, H02=3100.
+    assert abs(by["2026-10-13T00"] - 1000) < 0.1
+    assert abs(by["2026-10-13T01"] - 1700) < 0.1
+    assert abs(by["2026-10-13T02"] - 3100) < 0.1
+    # No load available -> share stays None.
+    assert all(h.renewable_share is None for h in hours)
+
+
+@pytest.mark.asyncio
+async def test_forecast_service_ranks_cleanest_upcoming(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("documentType") == "A69":
+            return httpx.Response(200, text=_A69_XML)
+        return httpx.Response(200, text="<x>No matching data found</x>")
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = ENTSOERepository(token="tok")
+    adv = await forecast_service.carbon_forecast(repo, "aws", "eu-north-1", hours_ahead=3, top_n=3)
+    assert adv.source == "entsoe_forecast"
+    assert adv.quality == "forecast"
+    # Cleanest = most renewables = hour 02 (3100 MW) first.
+    assert adv.cleanest_upcoming[0].period == "2026-10-13T02"
+    assert adv.peak_renewable_period == "2026-10-13T02"
+    assert adv.low_renewable_period == "2026-10-13T00"
+
+
+@pytest.mark.asyncio
+async def test_auto_repository_forecast_routes_eu_only(monkeypatch):
+    from greenpick.data.auto_repository import AutoRepository
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("documentType") == "A69":
+            return httpx.Response(200, text=_A69_XML)
+        return httpx.Response(200, text="<x>No matching data found</x>")
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = AutoRepository(eia_key="k", entsoe_token="t")
+    eu = await repo.renewable_forecast("aws", "eu-north-1", 3)   # Sweden -> ENTSO-E
+    us = await repo.renewable_forecast("aws", "us-east-1", 3)    # PJM -> no forecast
+    assert len(eu) == 3
+    assert us == []   # US has no free forecast -> empty, caller degrades
+
+
 # --- Data-locality / egress warning ---
 
 from greenpick.services import locality_service
