@@ -47,7 +47,13 @@ explain_methodology_and_limits._
 ## New — the seeds of future tools
 
 ### Scheduling / time
-- 🔭 "What's the carbon forecast for us-west-2 over the next 24h?" — forecasting source (EIA has day-ahead; Electricity Maps paid has forecast). Turns scheduling from *reactive* to *planned*.
+- 🔭 "What's the carbon forecast for a region over the next 24h?" — forecasting. Turns scheduling from *reactive* to *planned*. **Data spike done (2026-10-12), findings below.**
+
+> **Forecasting data spike (ENTSO-E, live-probed):**
+> - ✅ **A69 wind+solar day-ahead forecast** is reliable across zones: SE returns ~99 hourly points (several days), IE ~26h. psrType B16 (solar) + B19 (wind). This is the dependable signal.
+> - ⚠️ **A65 load forecast** works for SE but is EMPTY for IE ("No matching data found"). ❌ **A71 total-generation forecast** likewise empty for IE. So load/total-gen are NOT dependable denominators across zones.
+> - **Conclusion:** an absolute gCO₂/kWh *forecast* is not reliably buildable (no forecast fuel mix; load missing in places). But a RELATIVE "which upcoming hours are cleaner" signal IS — rank hours by forecast renewable (wind+solar) output. More forecast renewables = cleaner hour. Directional, honest, zone-robust.
+> - **Design:** forecast tool fetches A69, builds an hourly renewable-output curve, ranks the cleanest upcoming hours/window. Where A65 load exists, optionally refine to a renewable-SHARE ratio. Degrade path: forecast → fall back to the historical pattern we already compute, relabelled `quality:"forecast"` vs `"historical"`/`"live"`. US (EIA) has no free generation-mix forecast → stays history-based for now; EU gets true forecast first.
 - 🟡 "I have a flexible weekly job — what's the single best hour of the week to run it?" — PARTIALLY SHIPPED as `cleanest_time_of_day` (daily time-of-day pattern averaged across ~13 days of EIA data). True 7-day day-of-week patterning still needs a longer, weekday-labelled history window.
 - 🔭 "Batch this across the cleanest hours until it's done" — a *plan* (list of hour-slots summing to N compute-hours), not just the single cleanest hour.
 
