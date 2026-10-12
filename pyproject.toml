@@ -16,6 +16,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "ijson>=3.0",   # used only by scripts/refresh_pricing.py (not a runtime dep)
 ]
 
 [project.scripts]
