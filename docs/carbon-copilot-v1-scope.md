@@ -743,3 +743,27 @@ That ~82% shows WHEN can matter as much as WHERE for deferrable work — the lit
 ### Honest scope
 US = real hourly history (EIA). EU = synthetic curve placeholder until ENTSO-E multi-hour parsing
 is added (TODO). Flat-grid regions get a "time-shifting won't help, focus on region" note.
+
+---
+
+## Bugfix: .env not loading under Kiro (mock instead of live) — FIXED
+
+Symptom: calling cleanest_hours_to_run via the Kiro MCP tool returned source=mock/quality=mock
+(synthetic H00/H02 hours) even though a DIRECT run returned source=eia/live. Shape of the advice
+was right (overnight cleanest, big % cut) but numbers were illustrative, not live.
+
+Root cause: config.py used `find_dotenv(usecwd=True)` first. The MCP client launches the server
+with an unpredictable cwd, so the cwd-walk could miss the project .env (or find a wrong one) ->
+GREENPICK_CARBON_SOURCE defaulted to mock, key unseen.
+
+Fix: load the project-root .env DETERMINISTICALLY by path relative to config.py
+(parents[2]/.env), with override=False so a real env var (e.g. set in the MCP `env` block) still
+wins. Verified: running from a foreign cwd now resolves source=auto + keys present. 17/17 tests pass.
+
+Note: either mechanism now works — .env (automatic) OR putting GREENPICK_CARBON_SOURCE/EIA_API_KEY/
+ENTSOE_TOKEN directly in the greenpick entry's `env` block in ~/.kiro/settings/mcp.json (explicit,
+wins over .env). Secrets stay out of git either way.
+
+### To see LIVE data in Kiro
+Reconnect greenpick (reloads the fixed config). Then cleanest_hours_to_run / the region tools will
+return source=eia|entsoe, quality=live for US/EU regions (us-west-2 overnight ~82% cut on real data).

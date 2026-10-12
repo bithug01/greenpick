@@ -7,21 +7,18 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-# Load a .env file into the environment BEFORE we read any settings. Without this,
-# values in .env (carbon source, API token) are never seen — the MCP client launches
-# the server with its own environment, not a shell that sourced .env.
+# Load the project-root .env BEFORE reading settings. The MCP client launches the server with
+# its own environment (not a shell that sourced .env) and an unpredictable cwd — so we load the
+# .env that lives next to the package DETERMINISTICALLY (by path relative to this file), rather
+# than relying on find_dotenv's cwd walk (which can miss it or find the wrong one).
+# Precedence: a real environment variable (e.g. set in the MCP server's `env` block) WINS over
+# .env, so either mechanism works and explicit env config always takes priority.
 try:
-    from dotenv import load_dotenv, find_dotenv
-    # find_dotenv walks up from CWD; also try the project root relative to this file,
-    # so it works no matter where the MCP client starts the process.
-    _found = find_dotenv(usecwd=True)
-    if _found:
-        load_dotenv(_found)
-    else:
-        from pathlib import Path
-        _proj_env = Path(__file__).resolve().parents[2] / ".env"  # src/greenpick/config.py -> project root
-        if _proj_env.exists():
-            load_dotenv(_proj_env)
+    from pathlib import Path
+    from dotenv import load_dotenv
+    _proj_env = Path(__file__).resolve().parents[2] / ".env"   # src/greenpick/config.py -> project root
+    if _proj_env.exists():
+        load_dotenv(_proj_env, override=False)   # override=False: don't clobber real env vars
 except Exception:
     # python-dotenv missing or unreadable .env -> fall back to raw os.environ (mock defaults).
     pass
