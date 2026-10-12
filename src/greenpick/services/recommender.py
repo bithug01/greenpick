@@ -24,6 +24,29 @@ def _candidate_providers(providers: list[Provider] | None) -> set[str]:
     return set(providers) if providers else {"aws", "gcp", "azure"}
 
 
+def _assign_ratings(candidates: list[RegionCandidate]) -> None:
+    """Relative R/Y/G per axis across the candidate set (lower is better for all three:
+    carbon intensity, latency, cost). Terciles: best third=green, middle=yellow, worst=red.
+    Transparent-by-construction — it's 'best available among your options', not an absolute
+    judgement. Candidates missing a value for an axis are left unrated for that axis."""
+    def rate(getter, setter):
+        vals = [(c, getter(c)) for c in candidates if getter(c) is not None]
+        if not vals:
+            return
+        ordered = sorted(vals, key=lambda cv: cv[1])  # ascending: lower = better
+        n = len(ordered)
+        for i, (c, _v) in enumerate(ordered):
+            frac = i / n  # 0..1 position (0 = best)
+            setter(c, "green" if frac < 1/3 else "yellow" if frac < 2/3 else "red")
+
+    rate(lambda c: c.carbon.g_co2_per_kwh,
+         lambda c, r: setattr(c, "carbon_rating", r))
+    rate(lambda c: c.latency_ms_estimate,
+         lambda c, r: setattr(c, "latency_rating", r))
+    rate(lambda c: c.est_monthly_cost_usd,
+         lambda c, r: setattr(c, "cost_rating", r))
+
+
 async def compare_regions(
     repo: CarbonRepository,
     providers: list[Provider] | None,
@@ -57,6 +80,9 @@ async def compare_regions(
     ordered = sorted(candidates, key=lambda c: c.carbon.g_co2_per_kwh)
     for i, c in enumerate(ordered, start=1):
         c.carbon_rank = i
+
+    # Per-axis relative R/Y/G ratings (shown alongside raw values so the user sees tradeoffs).
+    _assign_ratings(candidates)
 
     # Baseline selection:
     #  - explicit baseline_region if the caller gave one (their current region), else

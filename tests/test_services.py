@@ -245,3 +245,21 @@ async def test_auto_router_picks_source_by_region(monkeypatch):
     assert us.source == "eia"
     assert eu.source == "entsoe"
     assert syd.quality == "mock"
+
+
+@pytest.mark.asyncio
+async def test_per_axis_ratings_assigned(monkeypatch):
+    repo = MockCarbonRepository()
+    user = GeoPoint(lat=38.9, lon=-77.0)
+    wl = Workload(vcpu=2, ram_gb=4, est_monthly_egress_gb=10)
+    rec = await recommender.compare_regions(repo, None, user, wl, optimize_for="carbon")
+    # Every candidate gets a R/Y/G on each axis, from the allowed set.
+    allowed = {"green", "yellow", "red"}
+    for c in rec.candidates:
+        assert c.carbon_rating in allowed
+        assert c.latency_rating in allowed
+        assert c.cost_rating in allowed
+    # The cleanest region (rank 1) must be green on carbon; the dirtiest must be red.
+    by_carbon = sorted(rec.candidates, key=lambda c: c.carbon.g_co2_per_kwh)
+    assert by_carbon[0].carbon_rating == "green"
+    assert by_carbon[-1].carbon_rating == "red"

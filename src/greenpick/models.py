@@ -45,6 +45,11 @@ class RegionCandidate(BaseModel):
     est_monthly_cost_usd: Optional[float] = None    # compute + egress ballpark
     latency_ms_estimate: Optional[float] = None     # to the user's location
     added_latency_ms: Optional[float] = None        # vs. the baseline region
+    # Per-axis relative rating within the candidate set: "green" | "yellow" | "red".
+    # Relative, not absolute — "best available among your options", shown next to the raw value.
+    carbon_rating: Optional[str] = None
+    latency_rating: Optional[str] = None
+    cost_rating: Optional[str] = None
     tradeoff: Optional[str] = None                  # one-line plain-English summary
 
 
