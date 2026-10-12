@@ -15,6 +15,7 @@ Response: XML with <TimeSeries> per production type:
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree as ET
@@ -33,6 +34,33 @@ _URL = "https://web-api.tp.entsoe.eu/api"
 def _strip_ns(tag: str) -> str:
     """ENTSO-E XML is namespaced; strip '{ns}tag' -> 'tag' for simple matching."""
     return tag.rsplit("}", 1)[-1]
+
+
+def _parse_interval_start(text: str) -> datetime | None:
+    """ENTSO-E timestamps look like '2026-10-11T18:00Z' or '2026-10-11T18:00:00Z'.
+    Parse to an aware UTC datetime; return None if unrecognisable."""
+    if not text:
+        return None
+    t = text.strip().replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(t)
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _resolution_minutes(text: str) -> int:
+    """Parse an ISO-8601 duration like 'PT60M' / 'PT15M' / 'PT1H' -> minutes.
+    Defaults to 60 if absent/unrecognised (A75 realised data is typically hourly)."""
+    if not text:
+        return 60
+    m = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?", text.strip())
+    if not m:
+        return 60
+    hours = int(m.group(1) or 0)
+    mins = int(m.group(2) or 0)
+    total = hours * 60 + mins
+    return total or 60
 
 
 class ENTSOERepository:
@@ -62,8 +90,21 @@ class ENTSOERepository:
             cached = hit[1]
             return cached.model_copy(update={"region": region, "provider": provider, "quality": "cached"})
 
+        xml_text = await self._fetch_xml(eic, hours_back=3)
+        if xml_text is None:
+            return await self._fallback.carbon_now(provider, region)
+        reading = self._xml_to_reading(provider, region, xml_text)
+        if reading is None:
+            return await self._fallback.carbon_now(provider, region)
+        self._cache[eic] = (time.time(), reading)
+        return reading
+
+    async def _fetch_xml(self, eic: str, hours_back: int) -> str | None:
+        """Fetch A75 realised-generation XML for an area over the last `hours_back` hours.
+        Retries transient empties/errors; returns the body text, or None on auth failure or
+        exhausted retries (callers fall back to mock). Shared by carbon_now and carbon_history."""
         now = datetime.now(timezone.utc)
-        start = now - timedelta(hours=3)   # a few hours back to ensure data exists
+        start = now - timedelta(hours=hours_back)
         params = {
             "securityToken": self._token,
             "documentType": "A75",
@@ -85,26 +126,98 @@ class ENTSOERepository:
                 if resp.status_code in (401, 403):
                     log.warning("ENTSO-E rejected the token (HTTP %s) — using mock. Check ENTSOE_TOKEN.",
                                 resp.status_code)
-                    return await self._fallback.carbon_now(provider, region)   # auth: don't retry
+                    return None   # auth: don't retry
                 resp.raise_for_status()
-                reading = self._xml_to_reading(provider, region, resp.text)
-                if reading is not None:
-                    self._cache[eic] = (time.time(), reading)
-                    return reading
+                if resp.text and "<TimeSeries" in resp.text:
+                    return resp.text
                 # 200 but no usable generation (transient empty) -> retry
-                log.debug("ENTSO-E empty/unparseable for %s (attempt %d/%d)", eic, attempt, attempts)
+                log.debug("ENTSO-E empty for %s (attempt %d/%d)", eic, attempt, attempts)
             except Exception as e:
                 log.debug("ENTSO-E call failed for %s (attempt %d/%d): %s", eic, attempt, attempts, e)
             if attempt < attempts:
                 await asyncio.sleep(0.6 * attempt)   # brief backoff: 0.6s, 1.2s
-
-        return await self._fallback.carbon_now(provider, region)
+        return None
 
     async def carbon_history(self, provider: Provider, region: str) -> list[HourlyCarbon]:
-        """v1: ENTSO-E A75 multi-hour parsing isn't implemented yet; degrade to the synthetic
-        fallback curve (honestly a placeholder) rather than block scheduling for EU regions.
-        TODO: parse per-position Points across the Period for a real EU hourly series."""
-        return await self._fallback.carbon_history(provider, region)
+        """Recent hourly carbon intensity for an EU zone, for scheduling deferrable work.
+
+        Parses A75 realised generation across the whole 24h window (every Point position,
+        not just the latest), aligns all production types onto their hour, and weights each
+        hour's fuel mix by emission factors. Falls back to the synthetic mock curve only when
+        there's no token, no EIC, or the fetch/parse yields nothing usable."""
+        meta = region_meta(provider, region) or {}
+        eic = meta.get("entsoe_eic")
+        if not self._token or not eic:
+            return await self._fallback.carbon_history(provider, region)
+
+        xml_text = await self._fetch_xml(eic, hours_back=24)
+        if xml_text is None:
+            return await self._fallback.carbon_history(provider, region)
+
+        series = self._xml_to_hourly(xml_text)
+        return series or await self._fallback.carbon_history(provider, region)
+
+    def _xml_to_hourly(self, xml_text: str) -> list[HourlyCarbon]:
+        """Parse A75 XML into an hourly carbon series.
+
+        For each TimeSeries (one production type) we walk every Point, map its position to a
+        timestamp (period start + (position-1) * resolution), and accumulate MW per fuel into
+        the Point's hour bucket. Then per hour: weighted mean of fuels -> gCO2/kWh.
+        Sub-hourly resolutions (e.g. PT15M) are summed into their containing hour."""
+        factor_map = emission_factors()["entsoe_psrtype_to_factor"]
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            return []
+
+        # hour_iso -> {psrType -> summed MW}  (MW summed across sub-hour points & timeseries chunks)
+        by_hour: dict[str, dict[str, float]] = {}
+
+        for ts in root.iter():
+            if _strip_ns(ts.tag) != "TimeSeries":
+                continue
+            psr = None
+            for el in ts.iter():
+                tag = _strip_ns(el.tag)
+                if tag == "psrType" and el.text:
+                    psr = el.text.strip()
+                elif tag == "Period":
+                    start_dt = None
+                    resolution_min = 60
+                    for c in el.iter():
+                        ct = _strip_ns(c.tag)
+                        if ct == "start" and c.text and start_dt is None:
+                            start_dt = _parse_interval_start(c.text)
+                        elif ct == "resolution" and c.text:
+                            resolution_min = _resolution_minutes(c.text)
+                    if start_dt is None or psr is None or psr not in factor_map:
+                        continue
+                    for pt in el.iter():
+                        if _strip_ns(pt.tag) != "Point":
+                            continue
+                        pos = qty = None
+                        for c in pt:
+                            ct = _strip_ns(c.tag)
+                            if ct == "position" and c.text:
+                                pos = int(c.text)
+                            elif ct == "quantity" and c.text:
+                                qty = float(c.text)
+                        if pos is None or qty is None:
+                            continue
+                        point_dt = start_dt + timedelta(minutes=(pos - 1) * resolution_min)
+                        hour_iso = point_dt.strftime("%Y-%m-%dT%H")
+                        bucket = by_hour.setdefault(hour_iso, {})
+                        bucket[psr] = bucket.get(psr, 0.0) + qty
+
+        out: list[HourlyCarbon] = []
+        for hour_iso in sorted(by_hour):
+            fuels = by_hour[hour_iso]
+            total = sum(fuels.values())
+            if total <= 0:
+                continue
+            weighted = sum(mw * factor_map[f] for f, mw in fuels.items())
+            out.append(HourlyCarbon(period=hour_iso, g_co2_per_kwh=round(weighted / total, 1)))
+        return out
 
     def _xml_to_reading(self, provider: Provider, region: str, xml_text: str) -> CarbonReading | None:
         """Parse A75 XML: for each TimeSeries (one production type), take its latest

@@ -222,6 +222,59 @@ async def test_entsoe_non_eu_region_falls_back_to_mock():
     assert r.quality == "mock"
 
 
+# Multi-hour A75: hour 18 nuclear-heavy (cleaner), hour 19 gas-heavy (dirtier).
+# Hourly resolution (PT60M), two positions = two hours. Gas B04=490, nuclear B14=12.
+_A75_MULTIHOUR_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<GL_MarketDocument xmlns="urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0">
+  <TimeSeries>
+    <MktPSRType><psrType>B04</psrType></MktPSRType>
+    <Period>
+      <timeInterval><start>2026-10-12T18:00Z</start><end>2026-10-12T20:00Z</end></timeInterval>
+      <resolution>PT60M</resolution>
+      <Point><position>1</position><quantity>500</quantity></Point>
+      <Point><position>2</position><quantity>1500</quantity></Point>
+    </Period>
+  </TimeSeries>
+  <TimeSeries>
+    <MktPSRType><psrType>B14</psrType></MktPSRType>
+    <Period>
+      <timeInterval><start>2026-10-12T18:00Z</start><end>2026-10-12T20:00Z</end></timeInterval>
+      <resolution>PT60M</resolution>
+      <Point><position>1</position><quantity>1500</quantity></Point>
+      <Point><position>2</position><quantity>500</quantity></Point>
+    </Period>
+  </TimeSeries>
+</GL_MarketDocument>"""
+
+
+@pytest.mark.asyncio
+async def test_entsoe_carbon_history_multihour(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params.get("documentType") == "A75"
+        return httpx.Response(200, text=_A75_MULTIHOUR_XML)
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = ENTSOERepository(token="tok")
+    hist = await repo.carbon_history("aws", "eu-north-1")   # Sweden
+    periods = {h.period: h.g_co2_per_kwh for h in hist}
+    # Position 1 -> hour 18, position 2 -> hour 19 (hourly resolution).
+    assert set(periods) == {"2026-10-12T18", "2026-10-12T19"}
+    # hour 18: 500 gas + 1500 nuc -> (500*490 + 1500*12)/2000 = 131.5
+    assert abs(periods["2026-10-12T18"] - 131.5) < 0.5
+    # hour 19: 1500 gas + 500 nuc -> (1500*490 + 500*12)/2000 = 370.5
+    assert abs(periods["2026-10-12T19"] - 370.5) < 0.5
+    assert periods["2026-10-12T18"] < periods["2026-10-12T19"]  # nuclear-heavy hour cleaner
+
+
+@pytest.mark.asyncio
+async def test_entsoe_carbon_history_no_token_uses_mock():
+    repo = ENTSOERepository(token="")
+    hist = await repo.carbon_history("aws", "eu-north-1")
+    assert len(hist) == 24   # synthetic fallback curve, not blocked
+
+
 @pytest.mark.asyncio
 async def test_auto_router_picks_source_by_region(monkeypatch):
     from greenpick.data.auto_repository import AutoRepository
