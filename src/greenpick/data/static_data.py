@@ -32,6 +32,12 @@ def emission_factors() -> dict:
     return json.loads((_DATA_DIR / "emission_factors.json").read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def instance_families() -> dict:
+    """Directional perf-per-watt multipliers for general-purpose instance families."""
+    return json.loads((_DATA_DIR / "instance_families.json").read_text(encoding="utf-8"))
+
+
 def iter_regions():
     """Yield (provider, region_code, meta) for every known region."""
     data = regions()

@@ -323,6 +323,67 @@ async def test_per_axis_ratings_assigned(monkeypatch):
 from greenpick.services import scheduling_service
 
 
+# --- Greener instance-family suggestion ---
+
+from greenpick.services import instance_service
+
+
+@pytest.mark.asyncio
+async def test_greener_instance_family_prefers_arm_and_computes_savings():
+    repo = MockCarbonRepository()
+    adv = await instance_service.greener_instance_family(
+        repo, "aws", "us-east-1", vcpu=4, ram_gb=16, current_family="m5",
+    )
+    # Greenest AWS general-purpose option is the ARM Graviton3 family (lowest relative_energy).
+    assert adv.recommended_family == "m7g"
+    assert adv.options[0].family == "m7g"          # greenest first
+    assert adv.options[0].arch == "arm"
+    assert adv.current_family == "m5"
+    # m7g relative_energy 0.45 vs m5 1.00 -> ~55% energy & CO2 saving.
+    top = adv.options[0]
+    assert top.energy_saving_vs_current_pct is not None
+    assert abs(top.energy_saving_vs_current_pct - 55.0) < 1.0
+    assert top.co2_saving_vs_current_pct == top.energy_saving_vs_current_pct
+    # Ratings assigned from the allowed set; greenest is green.
+    allowed = {"green", "yellow", "red"}
+    assert all(o.rating in allowed for o in adv.options)
+    assert adv.options[0].rating == "green"
+    # ARM caveat surfaced honestly in the rationale.
+    assert "arm" in adv.rationale.lower()
+    assert adv.limitations
+
+
+@pytest.mark.asyncio
+async def test_greener_instance_family_already_greenest_says_no_change():
+    repo = MockCarbonRepository()
+    adv = await instance_service.greener_instance_family(
+        repo, "aws", "us-east-1", vcpu=2, ram_gb=8, current_family="m7g",
+    )
+    assert adv.recommended_family == "m7g"
+    assert "no change" in adv.rationale.lower() or "already" in adv.rationale.lower()
+    # Current family on the greenest option -> 0% saving vs itself.
+    cur = next(o for o in adv.options if o.family == "m7g")
+    assert cur.energy_saving_vs_current_pct == 0.0
+
+
+def test_greener_instance_family_provider_support_gate():
+    # Unsupported providers are rejected at the boundary (server returns an error dict),
+    # so the strictly-typed advice model never has to hold a bogus provider.
+    assert instance_service.is_supported_provider("aws")
+    assert not instance_service.is_supported_provider("oracle")
+
+
+@pytest.mark.asyncio
+async def test_greener_instance_family_gcp_and_azure_have_arm_winners():
+    repo = MockCarbonRepository()
+    gcp = await instance_service.greener_instance_family(repo, "gcp", "us-central1", vcpu=2, ram_gb=8)
+    az = await instance_service.greener_instance_family(repo, "azure", "swedencentral", vcpu=2, ram_gb=8)
+    assert gcp.options[0].arch == "arm"       # Axion c4a
+    assert az.options[0].arch == "arm"        # Ampere Dpsv5
+    # Grid intensity is carried through from the (mock) reading.
+    assert gcp.grid_intensity_g_co2_per_kwh is not None
+
+
 @pytest.mark.asyncio
 async def test_cleanest_hours_mock():
     repo = MockCarbonRepository()

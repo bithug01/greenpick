@@ -4,8 +4,9 @@ A **design-time sustainability co-pilot** that runs as an MCP server inside your
 environment (Cursor / Claude Code / Kiro). When you're deciding **where to deploy**, it gives a
 greener region choice with an honest **carbon + cost + latency** tradeoff — in-editor, in seconds.
 
-> **Status: scaffold / work-in-progress.** Tool and data interfaces are wired; the live data
-> source and real math are stubbed (clearly marked `TODO`). It runs on **mock data** today.
+> **Status: working.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost parity
+> (Vantage-refreshed), per-axis R/Y/G ratings, and carbon-aware scheduling — all shipped. Falls
+> back to clearly-labelled mock data offline or without API keys.
 
 ## Why this exists
 
@@ -23,35 +24,46 @@ eyes open.
   GreenPick does **not** claim GHG-Protocol or ISO compliance — that's what the paid data vendors
   (Electricity Maps, WattTime) provide. GreenPick is for *decisions*, not *disclosures*.
 
-## v1 scope (ruthlessly small, so it ships)
+## Scope
 
 - One workload shape: a **long-running web/API service** deployed to a cloud region.
 - Providers: **AWS, GCP, Azure** regions.
-- Carbon = **grid carbon intensity by region** (directional, point-in-time).
-- Cost = **compute + egress ballpark** (deterministic static table; never LLM-invented).
+- Carbon = **grid carbon intensity by region** (directional, point-in-time; live US + EU).
+- Cost = **compute + egress ballpark** (deterministic static table, apples-to-apples across
+  clouds; never LLM-invented).
 - Latency = **geographic estimate** to a stated user location.
-- **Free data only.** No forecasting, no flow-traced consumption accounting in v1.
+- **Carbon-aware scheduling** = cleanest recent hours to run a deferrable job.
+- **Greener instance family** = same-size, same-region family that does the work on less energy.
+- **Free data only.** No forecasting, no flow-traced consumption accounting.
 
-Out of v1 (roadmap): batch/GPU/training workloads, time-shifting ("run the nightly job when the
-grid's clean"), forecasting, sub-national grid zones, CI/CD integration.
+Roadmap: ENTSO-E multi-hour EU history (done), data-locality/egress warning, batch/GPU workloads,
+forecasting, sub-national grid zones, CI/CD integration.
 
 ## MCP tools
 
 | Tool | What it does |
 |------|--------------|
-| `compare_regions_tri_axis` | Rank candidate regions by carbon with cost + latency tradeoffs; recommend a pick. |
+| `compare_regions_tri_axis` | Rank candidate regions by carbon with cost + latency tradeoffs; recommend a pick, each axis rated R/Y/G. |
 | `greener_alternative_to` | "You picked X — the greenest region within +N ms latency is Y (−Z% carbon, Δcost)." The core nudge. |
 | `estimate_workload_carbon` | Rough kgCO₂/month for a workload in a region (an *estimate*, not a measurement). |
 | `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness. |
+| `cleanest_hours_to_run` | Carbon-aware scheduling: cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction vs. the dirtiest hour. |
+| `greener_instance_family` | Suggest a greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick explicitly does **not** claim. |
 
 ## Data sources (free; swappable behind one interface)
 
-- **Electricity Maps free tier** — live carbon intensity, 200+ regions (primary).
-- **ENTSO-E** (EU), **EIA-930** (US), **NESO** (UK) — free official fallbacks.
-- **Open Grid Emissions** / eGRID annual averages — offline degradation path.
-- Cost: a **static, dated pricing table** (`data/pricing.json`), deterministic.
+- **EIA-930** (US balancing authorities) and **ENTSO-E** (EU zones) — live grid carbon,
+  auto-routed by region. Both also drive `cleanest_hours_to_run` from recent hourly history.
+- **Mock** — deterministic, offline default; clearly labelled `quality: "mock"` so nothing is
+  mistaken for a real reading. Used wherever a key is missing or a region isn't covered.
+- Cost: a **dated static pricing table** (`data/pricing.json`), refreshed from live Vantage
+  pricing via `scripts/refresh_pricing.py` using one matched method across all three clouds.
+- Instance-family efficiency: directional perf-per-watt multipliers (`data/instance_families.json`).
 - Latency: great-circle distance from region coordinates to the user's location.
+
+Set `EIA_API_KEY` and `ENTSOE_TOKEN` in `.env` (both free) for live carbon; `GREENPICK_CARBON_SOURCE`
+selects the source (`auto` routes US→EIA, EU→ENTSO-E, else mock).
 
 The data layer is a swappable repository (`MOCK` by default, works offline). Nothing here invents
 numbers: the LLM writes the *rationale*, the code supplies the *figures*.

@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 5 tools over FastMCP.
+"""MCP server: exposes GreenPick's 7 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -11,7 +11,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .models import Workload, GeoPoint, Provider
 from .data import get_repository
-from .services import carbon_service, recommender, scheduling_service
+from .services import carbon_service, recommender, scheduling_service, instance_service
 
 mcp = FastMCP("greenpick")
 _repo = get_repository()
@@ -109,6 +109,34 @@ async def cleanest_hours_to_run(provider: str, region: str, top_n: int = 3) -> d
 
 
 @mcp.tool()
+async def greener_instance_family(
+    provider: str,
+    region: str,
+    vcpu: float,
+    ram_gb: float,
+    current_family: Optional[str] = None,
+    hours_per_month: float = 730,
+) -> dict:
+    """Suggest a greener SAME-SIZE instance family in the SAME region. The mechanism is
+    performance-per-watt: a newer-generation or ARM (Graviton-class) family does the same
+    work on less energy -> less CO2 at the region's grid intensity. Give your current family
+    (e.g. 'm5', 'n2', 'Dv5') for a savings delta. Directional, not a measurement."""
+    if not instance_service.is_supported_provider(provider):
+        return {
+            "provider": provider,
+            "region": region,
+            "error": f"Unsupported provider '{provider}'.",
+            "supported_providers": list(instance_service.SUPPORTED_PROVIDERS),
+            "options": [],
+        }
+    advice = await instance_service.greener_instance_family(
+        _repo, provider, region, vcpu, ram_gb,  # type: ignore[arg-type]
+        current_family=current_family, hours_per_month=hours_per_month,
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
 def explain_methodology_and_limits() -> dict:
     """GreenPick's assumptions and what it explicitly does NOT claim. Read this before trusting a number."""
     return {
@@ -118,6 +146,7 @@ def explain_methodology_and_limits() -> dict:
         "cost": "Ballpark from a dated static table (compute + egress). Not a quote.",
         "latency": "Great-circle geographic estimate, not a measured ping.",
         "carbon_estimate": "Workload CO2 = documented power model (vCPU/RAM -> watts) x PUE x grid intensity.",
+        "instance_family": "Greener-family suggestion uses DIRECTIONAL perf-per-watt multipliers by generation/arch (ARM/Graviton-class = biggest win), not a benchmark of your workload.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
         "data_sources": "Electricity Maps free tier (primary); ENTSO-E / EIA / NESO fallbacks; annual averages offline.",
     }

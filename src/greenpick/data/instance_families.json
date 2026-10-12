@@ -1,0 +1,32 @@
+{
+  "_comment": "Directional energy-efficiency (performance-per-watt) multipliers for general-purpose instance FAMILIES, used to suggest a greener same-size family in the same region. The carbon mechanism is real: newer process nodes and ARM (Graviton-class) cores do the same work on less energy. 'relative_energy' is the energy drawn to deliver a fixed amount of work, normalised so a modern x86 generation = 1.00; LOWER is greener. These are ORDER-OF-MAGNITUDE, directional figures consistent with public vendor/analyst claims (e.g. AWS Graviton ~60% less energy for the same performance; each x86 generation ~10-20% better perf/watt). NOT measured for your workload. Replace with cited, benchmarked values before any non-directional use.",
+  "_as_of": "2026-10-12",
+  "_source": "Directional: AWS Graviton energy claims; Intel/AMD generational perf-per-watt disclosures; SPECpower-style public results. Normalised and rounded by GreenPick. Do not cite as measured.",
+  "_relative_energy_note": "relative_energy LOWER = greener (less energy for the same work). arch 'arm' families are the biggest honest win.",
+  "aws": {
+    "_general_purpose_generations": [
+      { "family": "m5",   "arch": "x86", "cpu": "Intel Xeon (Skylake/Cascade)", "relative_energy": 1.00, "generation": 5, "notes": "Baseline modern x86 general-purpose." },
+      { "family": "m6i",  "arch": "x86", "cpu": "Intel Xeon (Ice Lake)",        "relative_energy": 0.88, "generation": 6, "notes": "~10-15% better perf/watt than m5." },
+      { "family": "m7i",  "arch": "x86", "cpu": "Intel Xeon (Sapphire Rapids)", "relative_energy": 0.80, "generation": 7, "notes": "Newer x86; further perf/watt gain." },
+      { "family": "m6g",  "arch": "arm", "cpu": "AWS Graviton2",                "relative_energy": 0.55, "generation": 6, "notes": "ARM; AWS claims large energy reduction for same work." },
+      { "family": "m7g",  "arch": "arm", "cpu": "AWS Graviton3",                "relative_energy": 0.45, "generation": 7, "notes": "Greenest general-purpose option where ARM is viable." }
+    ]
+  },
+  "gcp": {
+    "_general_purpose_generations": [
+      { "family": "n1",         "arch": "x86", "cpu": "Intel (Skylake/Broadwell)", "relative_energy": 1.08, "generation": 1, "notes": "Older generation; least efficient." },
+      { "family": "n2",         "arch": "x86", "cpu": "Intel Cascade/Ice Lake",    "relative_energy": 1.00, "generation": 2, "notes": "Baseline modern x86." },
+      { "family": "n2d",        "arch": "x86", "cpu": "AMD EPYC (Milan)",          "relative_energy": 0.90, "generation": 2, "notes": "AMD; typically better perf/watt than n2." },
+      { "family": "c3",         "arch": "x86", "cpu": "Intel Sapphire Rapids",     "relative_energy": 0.80, "generation": 3, "notes": "Newer x86." },
+      { "family": "c4a",        "arch": "arm", "cpu": "Google Axion",              "relative_energy": 0.47, "generation": 4, "notes": "ARM (Axion); greenest where ARM is viable." }
+    ]
+  },
+  "azure": {
+    "_general_purpose_generations": [
+      { "family": "Dv4",  "arch": "x86", "cpu": "Intel Cascade Lake",   "relative_energy": 1.05, "generation": 4, "notes": "Older modern x86." },
+      { "family": "Dv5",  "arch": "x86", "cpu": "Intel Ice Lake",       "relative_energy": 1.00, "generation": 5, "notes": "Baseline modern x86." },
+      { "family": "Dasv5","arch": "x86", "cpu": "AMD EPYC (Milan)",     "relative_energy": 0.90, "generation": 5, "notes": "AMD; better perf/watt than Dv5." },
+      { "family": "Dpsv5","arch": "arm", "cpu": "Ampere Altra",         "relative_energy": 0.52, "generation": 5, "notes": "ARM (Ampere); large energy reduction for same work." }
+    ]
+  }
+}

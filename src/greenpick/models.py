@@ -55,6 +55,33 @@ class SchedulingAdvice(BaseModel):
     note: str = ""
 
 
+class FamilyOption(BaseModel):
+    """One instance family as a greener-compute candidate, same size & region."""
+    family: str
+    arch: str                                   # "x86" | "arm"
+    cpu: str
+    relative_energy: float                      # energy for the same work; lower = greener
+    energy_saving_vs_current_pct: Optional[float] = None   # vs. the user's current family
+    est_kg_co2_per_month: Optional[float] = None
+    co2_saving_vs_current_pct: Optional[float] = None
+    rating: Optional[str] = None                # "green" | "yellow" | "red", relative to the options
+    note: str = ""
+
+
+class GreenerComputeAdvice(BaseModel):
+    """Greener same-size instance families in the same region, ranked by energy efficiency."""
+    provider: Provider
+    region: str
+    current_family: Optional[str] = None
+    grid_intensity_g_co2_per_kwh: Optional[float] = None
+    carbon_source: Optional[str] = None
+    carbon_quality: Optional[str] = None
+    options: list[FamilyOption] = []            # greenest first
+    recommended_family: Optional[str] = None
+    rationale: str = ""
+    limitations: str = ""
+
+
 class RegionCandidate(BaseModel):
     """One region scored on all three axes — the tri-axis payload."""
     region: str
