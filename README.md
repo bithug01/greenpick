@@ -49,6 +49,7 @@ Roadmap: forecasting (reactive → planned scheduling), sub-national grid zones,
 | `estimate_workload_carbon` | Rough kgCO₂/month for a workload in a region (an *estimate*, not a measurement). |
 | `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness. |
 | `cleanest_hours_to_run` | Carbon-aware scheduling: cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction. Pass `window_hours` for a job of known duration → cleanest contiguous window to start at. |
+| `cleanest_time_of_day` | For a **recurring** job (nightly batch): the region's cleanest time of day, each hour-of-day averaged across the recent days. A daily pattern, not a 7-day weekly one. |
 | `greener_instance_family` | Suggest a greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
 | `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
 | `estimate_training_carbon` | Carbon of a GPU training run (TDP-based energy × live grid), with greener **where** (region ranking) + **when** (cleanest hours) — the two levers that compound for portable, deferrable training. |

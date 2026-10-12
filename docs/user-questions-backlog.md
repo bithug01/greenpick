@@ -48,7 +48,7 @@ explain_methodology_and_limits._
 
 ### Scheduling / time
 - 🔭 "What's the carbon forecast for us-west-2 over the next 24h?" — forecasting source (EIA has day-ahead; Electricity Maps paid has forecast). Turns scheduling from *reactive* to *planned*.
-- 🔭 "I have a flexible weekly job — what's the single best hour of the week to run it?" — multi-day history + day-of-week pattern.
+- 🟡 "I have a flexible weekly job — what's the single best hour of the week to run it?" — PARTIALLY SHIPPED as `cleanest_time_of_day` (daily time-of-day pattern averaged across ~13 days of EIA data). True 7-day day-of-week patterning still needs a longer, weekday-labelled history window.
 - 🔭 "Batch this across the cleanest hours until it's done" — a *plan* (list of hour-slots summing to N compute-hours), not just the single cleanest hour.
 
 ### Workload shape (beyond the one always-on web service)

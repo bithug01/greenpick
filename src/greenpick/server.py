@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 9 tools over FastMCP.
+"""MCP server: exposes GreenPick's 10 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -172,6 +172,16 @@ async def data_locality_egress_check(
         monthly_cross_boundary_gb=monthly_cross_boundary_gb,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
     )
+    return advice.model_dump()
+
+
+@mcp.tool()
+async def cleanest_time_of_day(provider: str, region: str) -> dict:
+    """For a RECURRING job (e.g. a nightly batch you run every day), find the region's cleanest
+    time of day — each hour-of-day averaged across the recent days of data. Returns the cleanest/
+    dirtiest hour-of-day and the % gap. Honest scope: a DAILY pattern over the few days of free
+    data, NOT a 7-day day-of-week pattern. Use `cleanest_hours_to_run` for a one-off job's timing."""
+    advice = await scheduling_service.cleanest_time_of_day(_repo, provider, region)  # type: ignore[arg-type]
     return advice.model_dump()
 
 

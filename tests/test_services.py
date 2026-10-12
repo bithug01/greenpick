@@ -549,6 +549,49 @@ async def test_greener_instance_family_gcp_and_azure_have_arm_winners():
 
 
 @pytest.mark.asyncio
+async def test_cleanest_time_of_day_mock_single_day():
+    repo = MockCarbonRepository()
+    adv = await scheduling_service.cleanest_time_of_day(repo, "aws", "us-east-1")
+    # Mock history is a 24h synthetic curve (H00..H23) -> one day, 24 hour-of-day buckets.
+    assert adv.days_analyzed == 1
+    assert len(adv.by_hour_of_day) == 24
+    # Cleanest-first ordering.
+    avgs = [s.avg_g_co2_per_kwh for s in adv.by_hour_of_day]
+    assert avgs == sorted(avgs)
+    assert adv.cleanest_hour_of_day is not None and 0 <= adv.cleanest_hour_of_day <= 23
+    assert adv.limitations  # honesty caveat present
+
+
+@pytest.mark.asyncio
+async def test_cleanest_time_of_day_averages_across_days(monkeypatch):
+    # EIA across 3 days: hour 02 is clean every day, hour 18 is dirty every day.
+    # Build fuel rows so hour 02 = nuclear-heavy, hour 18 = gas-heavy, on 3 consecutive days.
+    def handler(request: httpx.Request) -> httpx.Response:
+        data = []
+        for day in ("2026-10-10", "2026-10-11", "2026-10-12"):
+            data += [
+                {"period": f"{day}T02", "fueltype": "NUC", "value": "1800"},
+                {"period": f"{day}T02", "fueltype": "NG",  "value": "200"},
+                {"period": f"{day}T18", "fueltype": "NUC", "value": "200"},
+                {"period": f"{day}T18", "fueltype": "NG",  "value": "1800"},
+            ]
+        return httpx.Response(200, json={"response": {"data": data}})
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = EIARepository(api_key="k")
+    adv = await scheduling_service.cleanest_time_of_day(repo, "aws", "us-east-nyc")
+    assert adv.days_analyzed == 3
+    assert adv.cleanest_hour_of_day == 2      # nuclear-heavy hour, every day
+    assert adv.dirtiest_hour_of_day == 18     # gas-heavy hour, every day
+    # Each hour-of-day averaged over all 3 days.
+    h2 = next(s for s in adv.by_hour_of_day if s.hour_of_day == 2)
+    assert h2.days_observed == 3
+    assert adv.potential_reduction_pct is not None and adv.potential_reduction_pct > 10
+
+
+@pytest.mark.asyncio
 async def test_cleanest_hours_window_backward_compatible():
     # No window_hours -> unchanged behaviour, window stays None.
     repo = MockCarbonRepository()

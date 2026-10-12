@@ -76,7 +76,7 @@ class EIARepository:
                 "facets[respondent][]": ba,
                 "sort[0][column]": "period",
                 "sort[0][direction]": "desc",
-                "length": "500",   # ~60 recent hours x fuels — enough for history too
+                "length": "2000",   # ~5-7 days of hourly rows x fuels — enough for a daily pattern
             }
             async with httpx.AsyncClient(timeout=12) as client:
                 resp = await client.get(_URL, params=params)

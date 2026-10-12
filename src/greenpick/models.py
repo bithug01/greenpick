@@ -50,6 +50,32 @@ class CleanestWindow(BaseModel):
     hours: list[HourlyCarbon] = []     # the per-hour breakdown of the chosen window
 
 
+class HourOfDayStat(BaseModel):
+    """Average carbon for a given hour-of-day across the days in the recent window."""
+    hour_of_day: int                   # 0..23 (UTC, matching the source timestamps)
+    avg_g_co2_per_kwh: float
+    days_observed: int                 # how many days contributed to this average
+
+
+class DailyPatternAdvice(BaseModel):
+    """The recurring time-of-day pattern for a region, for timing a RECURRING job (e.g. nightly).
+
+    This is a daily pattern over the N days we have, NOT a 7-day weekly pattern — the free data
+    windows are only a few days, so we honestly report 'cleanest time of day', not 'day of week'."""
+    region: str
+    provider: Provider
+    source: str
+    quality: DataQuality
+    days_analyzed: int
+    hours_analyzed: int
+    by_hour_of_day: list[HourOfDayStat] = []     # all 0..23 that had data, cleanest first
+    cleanest_hour_of_day: Optional[int] = None
+    dirtiest_hour_of_day: Optional[int] = None
+    potential_reduction_pct: Optional[float] = None
+    note: str = ""
+    limitations: str = ""
+
+
 class SchedulingAdvice(BaseModel):
     """Cleanest hours to run a deferrable job in a region, from recent history."""
     region: str

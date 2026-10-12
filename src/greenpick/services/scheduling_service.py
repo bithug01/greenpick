@@ -9,7 +9,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from ..models import SchedulingAdvice, CleanestWindow, HourlyCarbon, Provider
+from ..models import (
+    SchedulingAdvice, CleanestWindow, HourlyCarbon, Provider,
+    DailyPatternAdvice, HourOfDayStat,
+)
 from ..data.repository import CarbonRepository
 
 
@@ -130,3 +133,79 @@ async def cleanest_hours(
                            f"showing cleanest individual hours instead. " + advice.note)
 
     return advice
+
+
+async def cleanest_time_of_day(
+    repo: CarbonRepository,
+    provider: Provider,
+    region: str,
+) -> DailyPatternAdvice:
+    """The recurring cleanest time-of-day for a region, for timing a RECURRING job (e.g. a nightly
+    batch you'll run every day). Averages each hour-of-day across the days in the recent window.
+
+    Honest scope: the free data windows are only a few days, so this is a DAILY pattern over N days,
+    not a 7-day day-of-week pattern. We report 'the grid is consistently cleanest around 03:00',
+    not 'Sundays are cleanest'."""
+    history = await repo.carbon_history(provider, region)
+    now = await repo.carbon_now(provider, region)
+
+    limitations = ("Daily pattern over the recent window (a few days of free data), not a 7-day "
+                   "weekly/day-of-week pattern. Hours are in the source's timezone (UTC for EIA/"
+                   "ENTSO-E). Directional — the pattern can shift with weather and season.")
+
+    if not history:
+        return DailyPatternAdvice(
+            region=region, provider=provider, source=now.source, quality=now.quality,
+            days_analyzed=0, hours_analyzed=0,
+            note="No recent hourly history available for this region — can't derive a daily pattern.",
+            limitations=limitations,
+        )
+
+    # Group by hour-of-day (index % 24); track distinct days (index // 24) for an honest count.
+    buckets: dict[int, list[float]] = {}
+    days: set[int] = set()
+    for h in history:
+        idx = _hour_index(h.period)
+        if idx is None:
+            continue
+        hod = idx % 24
+        buckets.setdefault(hod, []).append(h.g_co2_per_kwh)
+        days.add(idx // 24)
+
+    if not buckets:
+        return DailyPatternAdvice(
+            region=region, provider=provider, source=now.source, quality=now.quality,
+            days_analyzed=0, hours_analyzed=len(history),
+            note="Couldn't parse hour-of-day from the history timestamps.",
+            limitations=limitations,
+        )
+
+    stats = [
+        HourOfDayStat(hour_of_day=hod, avg_g_co2_per_kwh=round(sum(v) / len(v), 1),
+                      days_observed=len(v))
+        for hod, v in buckets.items()
+    ]
+    stats.sort(key=lambda s: s.avg_g_co2_per_kwh)   # cleanest-first
+    cleanest = stats[0]
+    dirtiest = stats[-1]
+    reduction = (round((dirtiest.avg_g_co2_per_kwh - cleanest.avg_g_co2_per_kwh)
+                       / dirtiest.avg_g_co2_per_kwh * 100, 1)
+                 if dirtiest.avg_g_co2_per_kwh > 0 else None)
+
+    n_days = max(1, len(days))
+    if reduction is not None and reduction >= 10:
+        note = (f"Over the last ~{n_days} day(s), this region is consistently cleanest around "
+                f"{cleanest.hour_of_day:02d}:00 (avg ~{cleanest.avg_g_co2_per_kwh:.0f} gCO2/kWh) and "
+                f"dirtiest around {dirtiest.hour_of_day:02d}:00 - ~{reduction:.0f}% apart. For a "
+                f"recurring job, standing it up at ~{cleanest.hour_of_day:02d}:00 captures most of it.")
+    else:
+        note = (f"Over the last ~{n_days} day(s), this region's time-of-day pattern is fairly flat; "
+                f"a fixed run-time won't help much — region choice is the bigger lever.")
+
+    return DailyPatternAdvice(
+        region=region, provider=provider, source=now.source, quality=now.quality,
+        days_analyzed=n_days, hours_analyzed=len(history),
+        by_hour_of_day=stats,   # all observed hours-of-day, cleanest first (24 small rows)
+        cleanest_hour_of_day=cleanest.hour_of_day, dirtiest_hour_of_day=dirtiest.hour_of_day,
+        potential_reduction_pct=reduction, note=note, limitations=limitations,
+    )
