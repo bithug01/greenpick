@@ -1,5 +1,32 @@
 # GreenPick — user-questions backlog
 
+> ## ▶ NEXT SESSION: START HERE
+>
+> **The bottleneck is evidence, not code.** 11 tools are built, tested (44 passing), and committed,
+> but none has been used by a real user. Everything rests on one untested bet: *that developers will
+> change infra decisions for a directional carbon signal.* The disciplined next move is to VALIDATE
+> that bet before adding a 12th tool.
+>
+> **Do these in order:**
+> 1. **Build a demo walkthrough** (`docs/demo.md`) — 3-4 copy-paste scenarios in narrative order, each
+>    with expected output + a one-line "why this matters." **Lead with `estimate_training_carbon`** (the
+>    96% region swing on a real H100 run — the one place the carbon signal is big enough to change
+>    behaviour), then `data_locality_egress_check` (the backfire catch), then `carbon_forecast`. This
+>    is the artifact that makes a user conversation possible.
+> 2. **Pick ONE headline use case and make it airtight** — recommend *"where and when should I run this
+>    training job?"* Everything you show first should be that path, end to end.
+> 3. **Then the user conversation** (your side, out-of-session) — 3-5 people who actually make cloud/
+>    training decisions. Watch which tool they reach for and which they ignore. That's the real deliverable.
+>
+> **Hold the line:** resist adding features until step 3 gives evidence. If we do build next, the
+> LLM-inference estimator jumps the queue (rising relevance, reuses the GPU table) — but it's still
+> building on the unvalidated bet. Demo → user → then build what they reached for.
+>
+> _Loose end: the 6 newer tools aren't in the greenpick `autoApprove` list in `mcp.json` (approval
+> prompt on first call each). Harmless; flip when convenient._
+
+---
+
 A running list of the questions a developer would naturally ask GreenPick while building, phrased
 the way they'd actually type them in the editor. The point is to work *backwards from the question*
 to the tool: some are already answered, some are a tweak away, and some are the seed of the next
@@ -13,9 +40,9 @@ Legend for **Status**:
 - 🟡 **Partial** — a current tool gets close but misses part of it.
 - 🔭 **New** — would need a new tool or data source.
 
-_As of 2026-10-12. 8 tools: compare_regions_tri_axis, greener_alternative_to, estimate_workload_carbon,
-region_carbon_now, cleanest_hours_to_run, greener_instance_family, data_locality_egress_check,
-explain_methodology_and_limits._
+_As of 2026-10-12. 11 tools: compare_regions_tri_axis, greener_alternative_to, estimate_workload_carbon,
+region_carbon_now, cleanest_hours_to_run, cleanest_time_of_day, carbon_forecast, greener_instance_family,
+data_locality_egress_check, estimate_training_carbon, explain_methodology_and_limits._
 
 ---
 
