@@ -37,7 +37,7 @@ explain_methodology_and_limits._
 
 | Question | Nearest tool | What's missing | Status |
 |---|---|---|---|
-| "My job runs for 6 hours — what's the cleanest 6-hour *window* to start it?" | `cleanest_hours_to_run` | Returns cleanest discrete hours, not a contiguous window sized to a duration. Add a `duration_hours` param that finds the lowest-average run of consecutive hours. | 🟡 |
+| "My job runs for 6 hours — what's the cleanest 6-hour *window* to start it?" | `cleanest_hours_to_run` | ✅ SHIPPED — `window_hours` param finds the lowest-average CONTIGUOUS run; training auto-derives the window from run duration. | ✅ |
 | "What's the cleanest region to run this *in the next 12 hours*?" (forecast) | `cleanest_hours_to_run` + `compare_regions` | Both are backward-looking (recent history / now). No forecast. Would need a forecast source. | 🟡→🔭 |
 | "Across a whole month, which region is greenest *on average*?" | `region_carbon_now` | Point-in-time only. Would need a rolling-average / historical-mean reading. | 🟡 |
 | "Rank these three regions *I* care about, not all of them." | `compare_regions_tri_axis` | Ranks the full catalog; no explicit "restrict to this candidate set" input. Add a `regions` filter. | 🟡 |

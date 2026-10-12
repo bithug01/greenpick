@@ -149,13 +149,27 @@ async def estimate_training_carbon(
                      f"~{dirtiest.est_kg_co2:.1f} kg).")
 
     # --- Timing: reuse carbon-aware scheduling for the chosen/greenest region ---
-    advice = await scheduling_service.cleanest_hours(repo, chosen_prov, chosen_region, top_n=3)
+    # A run's wall-clock duration ~= total GPU-hours / GPUs running in parallel. If that's >= 2h,
+    # ask for the cleanest CONTIGUOUS window of that length (you start one job once), not scattered
+    # hours. Cap at 24 so it stays within the history window.
+    wall_clock_h = int(round(gpu_hours / max(1, gpu_count)))
+    window = wall_clock_h if 2 <= wall_clock_h <= 24 else None
+    advice = await scheduling_service.cleanest_hours(
+        repo, chosen_prov, chosen_region, top_n=3, window_hours=window,
+    )
     base.cleanest_hours = advice.cleanest
+    base.cleanest_window = advice.window
     base.timing_reduction_pct = advice.potential_reduction_pct
     base.timing_source = advice.source
     base.timing_quality = advice.quality
 
-    if advice.potential_reduction_pct and advice.potential_reduction_pct >= 10 and advice.cleanest:
+    if advice.window and advice.window_reduction_pct and advice.window_reduction_pct >= 10:
+        w = advice.window
+        time_txt = (f" It runs ~{wall_clock_h}h wall-clock; the cleanest {w.window_hours}h window to "
+                    f"start is {w.start_period} (avg ~{w.avg_g_co2_per_kwh:.0f} gCO2/kWh), "
+                    f"~{advice.window_reduction_pct:.0f}% cleaner than the worst same-length window - "
+                    f"training is deferrable, so this stacks on the region choice.")
+    elif advice.potential_reduction_pct and advice.potential_reduction_pct >= 10 and advice.cleanest:
         best = advice.cleanest[0].period
         time_txt = (f" Timing it to the cleanest hours in that region (around {best}) cuts a further "
                     f"~{advice.potential_reduction_pct:.0f}% vs the dirtiest hour - training is "

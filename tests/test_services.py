@@ -507,6 +507,57 @@ async def test_greener_instance_family_gcp_and_azure_have_arm_winners():
 
 
 @pytest.mark.asyncio
+async def test_cleanest_hours_window_backward_compatible():
+    # No window_hours -> unchanged behaviour, window stays None.
+    repo = MockCarbonRepository()
+    advice = await scheduling_service.cleanest_hours(repo, "aws", "us-east-1", top_n=3)
+    assert advice.window is None
+    assert advice.window_reduction_pct is None
+
+
+@pytest.mark.asyncio
+async def test_cleanest_hours_window_finds_contiguous_run():
+    repo = MockCarbonRepository()
+    advice = await scheduling_service.cleanest_hours(
+        repo, "aws", "us-east-1", top_n=3, window_hours=6,
+    )
+    assert advice.window is not None
+    w = advice.window
+    assert w.window_hours == 6
+    assert len(w.hours) == 6
+    # The window must be CONTIGUOUS: mock periods are H00..H23, so the 6 hours step by 1.
+    nums = [int(h.period[1:]) for h in w.hours]
+    assert nums == list(range(nums[0], nums[0] + 6))
+    # Its average equals the mean of its hours.
+    assert abs(w.avg_g_co2_per_kwh - sum(h.g_co2_per_kwh for h in w.hours) / 6) < 0.1
+    # A 6h window average can't beat the single cleanest hour (it includes neighbours).
+    assert w.avg_g_co2_per_kwh >= advice.cleanest_g_co2_per_kwh
+
+
+def test_window_contiguity_breaks_on_gap():
+    # Build a series with a gap: hours 0,1,2 then jump to 20,21. A 3h window can only be 0-1-2.
+    from greenpick.models import HourlyCarbon
+    series = [
+        HourlyCarbon(period="H00", g_co2_per_kwh=10),
+        HourlyCarbon(period="H01", g_co2_per_kwh=10),
+        HourlyCarbon(period="H02", g_co2_per_kwh=10),
+        HourlyCarbon(period="H20", g_co2_per_kwh=1),   # cleaner, but isolated
+        HourlyCarbon(period="H21", g_co2_per_kwh=1),
+    ]
+    hours, _red = scheduling_service._best_and_worst_window(series, 3)
+    assert hours is not None
+    assert [h.period for h in hours] == ["H00", "H01", "H02"]   # only contiguous 3-run available
+
+
+def test_window_hour_index_parses_iso_and_mock():
+    assert scheduling_service._hour_index("H05") == 5
+    a = scheduling_service._hour_index("2026-10-12T18")
+    b = scheduling_service._hour_index("2026-10-12T19")
+    assert a is not None and b is not None and b - a == 1   # consecutive ISO hours step by 1
+    assert scheduling_service._hour_index("garbage") is None
+
+
+@pytest.mark.asyncio
 async def test_cleanest_hours_mock():
     repo = MockCarbonRepository()
     advice = await scheduling_service.cleanest_hours(repo, "aws", "us-east-1", top_n=3)

@@ -41,6 +41,15 @@ class HourlyCarbon(BaseModel):
     g_co2_per_kwh: float
 
 
+class CleanestWindow(BaseModel):
+    """The lowest-average contiguous run of N hours — for timing a job of known duration."""
+    window_hours: int
+    start_period: str                 # the hour the window begins (start your job here)
+    end_period: str                   # the last hour in the window
+    avg_g_co2_per_kwh: float           # mean intensity across the window
+    hours: list[HourlyCarbon] = []     # the per-hour breakdown of the chosen window
+
+
 class SchedulingAdvice(BaseModel):
     """Cleanest hours to run a deferrable job in a region, from recent history."""
     region: str
@@ -52,6 +61,9 @@ class SchedulingAdvice(BaseModel):
     dirtiest_g_co2_per_kwh: Optional[float] = None
     cleanest_g_co2_per_kwh: Optional[float] = None
     potential_reduction_pct: Optional[float] = None   # cleanest vs dirtiest
+    # Window mode (set when window_hours >= 2): the best contiguous run to start a job of that length.
+    window: Optional[CleanestWindow] = None
+    window_reduction_pct: Optional[float] = None       # best vs worst same-length window
     note: str = ""
 
 
@@ -108,6 +120,7 @@ class TrainingCarbonAdvice(BaseModel):
     recommended_region: Optional[str] = None
     # Timing (reuses cleanest-hours scheduling for the chosen/greenest region):
     cleanest_hours: list[HourlyCarbon] = []
+    cleanest_window: Optional["CleanestWindow"] = None   # set when the run is >= 2h wall-clock
     timing_reduction_pct: Optional[float] = None
     timing_source: Optional[str] = None
     timing_quality: Optional[str] = None

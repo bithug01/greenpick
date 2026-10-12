@@ -103,11 +103,17 @@ async def region_carbon_now(provider: str, region: str) -> dict:
 
 
 @mcp.tool()
-async def cleanest_hours_to_run(provider: str, region: str, top_n: int = 3) -> dict:
+async def cleanest_hours_to_run(
+    provider: str, region: str, top_n: int = 3, window_hours: Optional[int] = None,
+) -> dict:
     """Carbon-aware scheduling: given a region, report its cleanest recent hours so you can
     time a DEFERRABLE job (nightly ETL, batch, backups, training) when the grid is greenest.
-    Returns the lowest-carbon hours + the % reduction vs. the dirtiest hour. Directional."""
-    advice = await scheduling_service.cleanest_hours(_repo, provider, region, top_n)  # type: ignore[arg-type]
+    Returns the lowest-carbon hours + the % reduction vs. the dirtiest hour. Pass `window_hours`
+    (e.g. 6) for a job of known duration — it finds the cleanest CONTIGUOUS run of that many hours
+    to start at, since you can't split one job across scattered non-adjacent hours. Directional."""
+    advice = await scheduling_service.cleanest_hours(
+        _repo, provider, region, top_n, window_hours=window_hours,  # type: ignore[arg-type]
+    )
     return advice.model_dump()
 
 
