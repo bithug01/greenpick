@@ -11,14 +11,14 @@
     "egress_usd_per_gb": 0.09
   },
   "gcp": {
-    "compute_usd_per_vcpu_hour": 0.032,
-    "compute_usd_per_gb_ram_hour": 0.0043,
+    "compute_usd_per_vcpu_hour": 0.0438,
+    "compute_usd_per_gb_ram_hour": 0.0037,
     "egress_usd_per_gb": 0.085
   },
   "azure": {
-    "compute_usd_per_vcpu_hour": 0.035,
-    "compute_usd_per_gb_ram_hour": 0.0046,
+    "compute_usd_per_vcpu_hour": 0.0472,
+    "compute_usd_per_gb_ram_hour": 0.0039,
     "egress_usd_per_gb": 0.087
   },
-  "_source": "AWS compute coefficients derived from Vantage ec2instances.info live data (m5/m6i on-demand Linux, mean $/vCPU across regions, split 25% to RAM). GCP/Azure + all egress remain static. Directional, not a quote."
+  "_source": "Compute coefficients for [aws+azure+gcp] derived from Vantage live data using ONE matched method: general-purpose 4GB/vCPU families (AWS m5/m6i, GCP n2-standard, Azure D-series v5), on-demand Linux, mean $/vCPU across regions, 25% split to RAM. Egress remains static. Apples-to-apples DIRECTIONAL comparison, not a quote."
 }
