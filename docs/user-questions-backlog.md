@@ -7,12 +7,24 @@
 > change infra decisions for a directional carbon signal.* The disciplined next move is to VALIDATE
 > that bet before adding a 12th tool.
 >
+> **Framing — ONE ENGINE, TWO SURFACES (not two products):** all value lives in the surface-agnostic
+> engine (services + live data + honest math). The MCP is the real product (design-time, in-context —
+> "greener option at the moment you choose"). A **dashboard** is a second possible surface, best thought
+> of as a *demo / credibility surface* (a URL you send someone), NOT a co-equal product. A dashboard
+> drifting into "a page you visit to look at carbon" is the after-the-fact tooling GreenPick set out to
+> beat — keep it in service of validating the engine. **Hard rule if we ever build it: the dashboard
+> calls the SAME services the MCP calls. Never reimplement the math. Two surfaces, one engine, zero
+> duplicated logic.**
+>
 > **Do these in order:**
-> 1. **Build a demo walkthrough** (`docs/demo.md`) — 3-4 copy-paste scenarios in narrative order, each
->    with expected output + a one-line "why this matters." **Lead with `estimate_training_carbon`** (the
->    96% region swing on a real H100 run — the one place the carbon signal is big enough to change
->    behaviour), then `data_locality_egress_check` (the backfire catch), then `carbon_forecast`. This
->    is the artifact that makes a user conversation possible.
+> 1. **Build the demo artifact.** Goal: make a user conversation possible by showing the strongest path
+>    without asking anyone to wire up MCP. Two valid forms — pick per audience:
+>    - `docs/demo.md` — 3-4 copy-paste scenarios in narrative order (fastest to write), OR
+>    - a **thin demo dashboard** — richer vehicle for a non-technical stakeholder, pointed at the SAME
+>      services (no duplicated logic). For most stakeholders the webpage is the better demo.
+>    Either way, **lead with `estimate_training_carbon`** (the 96% region swing on a real H100 run — the
+>    one place the carbon signal is big enough to change behaviour), then `data_locality_egress_check`
+>    (the backfire catch), then `carbon_forecast`.
 > 2. **Pick ONE headline use case and make it airtight** — recommend *"where and when should I run this
 >    training job?"* Everything you show first should be that path, end to end.
 > 3. **Then the user conversation** (your side, out-of-session) — 3-5 people who actually make cloud/
