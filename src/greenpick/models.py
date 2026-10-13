@@ -190,7 +190,10 @@ class DataLocalityWarning(BaseModel):
     monthly_cross_boundary_gb: float
     locality: str                               # "same_region" | "cross_region_same_cloud" | "cross_cloud"
     severity: str                               # "none" | "low" | "medium" | "high"
-    est_monthly_egress_usd: Optional[float] = None
+    egress_rate_usd_per_gb_low: Optional[float] = None    # per-GB rate range for this tier
+    egress_rate_usd_per_gb_high: Optional[float] = None
+    est_monthly_egress_usd_low: Optional[float] = None    # monthly cost range = rate range x GB
+    est_monthly_egress_usd_high: Optional[float] = None
     est_monthly_transfer_kg_co2: Optional[float] = None   # secondary, coarse
     carbon_saving_kg_co2_from_move: Optional[float] = None # echoed back if provided
     net_carbon_verdict: Optional[str] = None    # set only when a saving was supplied

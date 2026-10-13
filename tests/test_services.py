@@ -538,7 +538,8 @@ async def test_locality_same_region_no_penalty():
     )
     assert w.locality == "same_region"
     assert w.severity == "none"
-    assert w.est_monthly_egress_usd == 0.0
+    assert w.est_monthly_egress_usd_low == 0.0
+    assert w.est_monthly_egress_usd_high == 0.0
     assert w.est_monthly_transfer_kg_co2 == 0.0
 
 
@@ -550,8 +551,11 @@ async def test_locality_cross_cloud_is_high_and_costs_money():
     )
     assert w.locality == "cross_cloud"
     assert w.severity == "high"            # cross-cloud + big volume
-    # egress billed at the data region's rate (aws 0.09) x 2000 GB = 180.0
-    assert abs(w.est_monthly_egress_usd - 180.0) < 0.01
+    # cross-cloud/internet tier spans ~0.085-0.12/GB x 2000 GB -> ~$170-$240 (high = GCP Premium
+    # end of the internet tier; not under-quoted by the data provider's own rate either).
+    assert abs(w.est_monthly_egress_usd_low - 170.0) < 0.01    # 0.085 x 2000
+    assert abs(w.est_monthly_egress_usd_high - 240.0) < 0.01   # 0.12  x 2000
+    assert w.est_monthly_egress_usd_low <= w.est_monthly_egress_usd_high
     assert w.est_monthly_transfer_kg_co2 is not None and w.est_monthly_transfer_kg_co2 > 0
 
 
@@ -563,8 +567,10 @@ async def test_locality_cross_region_small_volume_downgrades_severity():
     )
     assert w.locality == "cross_region_same_cloud"
     assert w.severity == "low"             # medium base, <50 GB -> downgraded
-    # aws egress 0.09 x 10 = 0.9
-    assert abs(w.est_monthly_egress_usd - 0.9) < 0.01
+    # cross-region tier 0.01-0.02/GB x 10 GB -> $0.10-$0.20 (NOT the ~$0.90 the old flat
+    # internet rate would have overstated it as).
+    assert abs(w.est_monthly_egress_usd_low - 0.10) < 0.01
+    assert abs(w.est_monthly_egress_usd_high - 0.20) < 0.01
 
 
 @pytest.mark.asyncio

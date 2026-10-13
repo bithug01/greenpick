@@ -5,6 +5,13 @@
     "compute": "USD per vCPU-hour and USD per GB-RAM-hour",
     "egress": "USD per GB to internet"
   },
+  "_egress_comment": "Egress is NOT one price — it's a tier ladder by WHERE the bytes cross. We price the locality tier (same-region / cross-region / cross-cloud+internet) as a LOW-HIGH RANGE because region-pair rates vary. Per-GB, USD, DIRECTIONAL list prices as of _as_of; excludes free-tier allowances, committed-use/negotiated discounts, and NAT/load-balancer processing fees. Not a quote. Keys: internet rate stays per-provider (differs most); same-region & cross-region tiers are broadly consistent across AWS/GCP/Azure so we use one shared range.",
+  "_egress_tiers_usd_per_gb": {
+    "same_region": { "low": 0.0, "high": 0.01, "note": "Same region: free within an AZ over private IP; ~$0.01/GB each way if it crosses AZs." },
+    "cross_region_same_cloud": { "low": 0.01, "high": 0.02, "note": "Inter-region within one cloud: most pairs ~$0.01-0.02/GB; a few source regions/continent pairs run higher." },
+    "cross_cloud": { "low": 0.085, "high": 0.12, "note": "Leaving the cloud to another provider or the public internet: the expensive tier; GCP Premium ~$0.12, AWS ~$0.09, Azure ~$0.087 at entry bands." }
+  },
+  "_egress_sources": "AWS/GCP/Azure published data-transfer pricing pages + corroborating 2026 guides (usage.ai, nops.io, egresscost.com, redresscompliance, bacancy, tatacommunications). Rounded to ranges; verify against the provider pricing page for a specific region pair.",
   "aws": {
     "compute_usd_per_vcpu_hour": 0.0469,
     "compute_usd_per_gb_ram_hour": 0.0039,

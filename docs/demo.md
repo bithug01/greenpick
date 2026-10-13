@@ -68,7 +68,7 @@ carbon_saving_kg_co2_from_move=2.0)`
 
 ```
 Locality: cross-region, same cloud   Severity: HIGH
-Egress cost:   ~$270 / month
+Egress cost:   ~$30–$60 / month   (~$0.01–$0.02/GB — the cross-region tier)
 Transfer carbon: ~33.6 kg CO₂ / month
 
 VERDICT — Backfires on carbon: the move saves ~2.0 kg CO₂/mo but the extra
@@ -76,10 +76,11 @@ transfer adds ~33.6 kg — net ~31.6 kg WORSE. Keep compute near the data,
 or move the data too.
 ```
 
-**Why this matters:** a naive "greener region!" recommendation would have made this **worse** — 16×
-worse on carbon, plus $270/month you weren't expecting. GreenPick is the only step that catches the
-backfire. It leads with the concrete number (egress $) and treats transfer carbon as the directional
-tiebreaker.
+**Why this matters:** the carbon alone makes this a bad move — 16× worse once you count the transfer.
+GreenPick prices the *right egress tier*: cross-region-same-cloud is ~$0.01–0.02/GB (a $30–60/mo
+range here), not the ~$0.09/GB internet rate — so it doesn't cry wolf on cost, but still catches the
+carbon backfire. Had the data been in *another cloud*, the same 3 TB would run ~$255–360/mo. Knowing
+*which tier* you're in is the point.
 
 ---
 

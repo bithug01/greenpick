@@ -24,11 +24,12 @@ from ..data.static_data import pricing, network_model
 from . import carbon_service
 
 LIMITATIONS = (
-    "Egress cost is DIRECTIONAL: a flat per-GB rate from a dated table — it ignores free tiers, "
-    "tiered/inter-region pricing, and same-AZ exemptions, so treat it as a floor-ish ballpark, not "
-    "a quote. Transfer carbon uses a single kWh/GB coefficient whose published estimates vary by "
-    "orders of magnitude; it's order-of-magnitude only. You supply where data lives and how much "
-    "crosses — GreenPick can't infer your architecture."
+    "Egress cost is DIRECTIONAL: a LOW-HIGH range for the locality tier (same-region / cross-region / "
+    "cross-cloud) from dated list prices — it ignores free-tier allowances, committed-use/negotiated "
+    "discounts, exact region-pair rates, and NAT/load-balancer fees, so treat it as a ballpark, not a "
+    "quote. Transfer carbon uses a single kWh/GB coefficient whose published estimates vary by orders "
+    "of magnitude; it's order-of-magnitude only. You supply where data lives and how much crosses — "
+    "GreenPick can't infer your architecture."
 )
 
 
@@ -74,7 +75,9 @@ async def data_locality_check(
             compute_location=compute_loc, data_location=data_loc,
             monthly_cross_boundary_gb=monthly_cross_boundary_gb,
             locality=locality, severity="none",
-            est_monthly_egress_usd=0.0, est_monthly_transfer_kg_co2=0.0,
+            egress_rate_usd_per_gb_low=0.0, egress_rate_usd_per_gb_high=0.0,
+            est_monthly_egress_usd_low=0.0, est_monthly_egress_usd_high=0.0,
+            est_monthly_transfer_kg_co2=0.0,
             warning="Compute and data are co-located — no cross-boundary egress for this flow.",
             recommendation="No locality penalty. Choose the region on carbon/latency/cost as usual.",
             limitations=LIMITATIONS,
@@ -82,13 +85,19 @@ async def data_locality_check(
 
     severity = _bump_severity_for_volume(severity, monthly_cross_boundary_gb)
 
-    # Egress is billed on the SOURCE of the outbound bytes. For a compute<->data flow the
-    # dominant charge is data LEAVING the data's region (reads) and/or compute's region (writes);
-    # we use the data region's egress rate as the representative directional figure.
-    data_table = pricing().get(data_provider) or {}
-    egress_rate = data_table.get("egress_usd_per_gb")
-    est_cost = (round(monthly_cross_boundary_gb * egress_rate, 2)
-                if egress_rate is not None else None)
+    # Egress is a TIER LADDER by where the bytes cross — not one flat rate. Price the tier we just
+    # classified, as a LOW-HIGH range (region-pair rates vary). For cross-cloud/internet the rate
+    # is provider-specific, so anchor the high end to the data provider's own internet rate.
+    tiers = pricing().get("_egress_tiers_usd_per_gb", {})
+    tier = tiers.get(locality, {})
+    rate_low = tier.get("low")
+    rate_high = tier.get("high")
+    if locality == "cross_cloud":
+        prov_internet = (pricing().get(data_provider) or {}).get("egress_usd_per_gb")
+        if prov_internet is not None and rate_high is not None:
+            rate_high = max(rate_high, prov_internet)   # don't under-quote this provider's internet rate
+    cost_low = round(monthly_cross_boundary_gb * rate_low, 2) if rate_low is not None else None
+    cost_high = round(monthly_cross_boundary_gb * rate_high, 2) if rate_high is not None else None
 
     # Transfer carbon: energy to move the bytes x the grid intensity where that energy is drawn.
     # Use the data region's grid as the representative intensity (coarse — energy is spread along
@@ -112,9 +121,13 @@ async def data_locality_check(
                        f"~{abs(net):.1f} kg WORSE. Keep compute near the data, or move the data too.")
 
     sep = ("across clouds" if locality == "cross_cloud" else "across regions in the same cloud")
-    cost_txt = f"~${est_cost:,.0f}/mo in egress" if est_cost is not None else "egress cost (rate unknown)"
+    if cost_low is not None and cost_high is not None:
+        cost_txt = (f"roughly ${cost_low:,.0f}-${cost_high:,.0f}/mo in egress "
+                    f"(~${rate_low:.2f}-${rate_high:.2f}/GB for this tier)")
+    else:
+        cost_txt = "an egress cost (rate unknown for this tier)"
     warning = (f"Compute and data are separated {sep}: ~{monthly_cross_boundary_gb:,.0f} GB/mo would "
-               f"cross the boundary, costing {cost_txt} plus ~{transfer_kg:.1f} kg CO2/mo of extra "
+               f"cross the boundary, costing {cost_txt}, plus ~{transfer_kg:.1f} kg CO2/mo of extra "
                f"transfer. A greener-region move can be undone by this.")
 
     if severity == "high":
@@ -132,7 +145,9 @@ async def data_locality_check(
         compute_location=compute_loc, data_location=data_loc,
         monthly_cross_boundary_gb=monthly_cross_boundary_gb,
         locality=locality, severity=severity,
-        est_monthly_egress_usd=est_cost, est_monthly_transfer_kg_co2=transfer_kg,
+        egress_rate_usd_per_gb_low=rate_low, egress_rate_usd_per_gb_high=rate_high,
+        est_monthly_egress_usd_low=cost_low, est_monthly_egress_usd_high=cost_high,
+        est_monthly_transfer_kg_co2=transfer_kg,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
         net_carbon_verdict=verdict,
         warning=warning, recommendation=rec, limitations=LIMITATIONS,
