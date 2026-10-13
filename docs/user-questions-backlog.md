@@ -25,6 +25,18 @@
 >    Either way, **lead with `estimate_training_carbon`** (the 96% region swing on a real H100 run — the
 >    one place the carbon signal is big enough to change behaviour), then `data_locality_egress_check`
 >    (the backfire catch), then `carbon_forecast`.
+> 1b. **Publish to GitHub (flip `bithug01/greenpick` private → public).** GitHub is the default home/
+>    distribution channel for MCP servers — it's how the ecosystem expects to find and install them, and
+>    it's a better demo vehicle than a markdown walkthrough for a *technical* audience. Optionally also
+>    publish to PyPI so people can `uvx greenpick`. **Pre-publish checklist (verified 2026-10-12):**
+>    - ✅ `.env` is gitignored (line 12) and NOT tracked; no real secrets in tracked files (only env-var
+>      *names* in config + dummy test values "k"/"t"). Re-scan before flipping, but currently clean.
+>    - ❗ **No LICENSE file** — README says "TBD". DECIDE and add one before going public (MIT/Apache-2.0
+>      if you want adoption; this is the one real blocker).
+>    - Add clear install instructions (the mcp.json snippet + env-var setup) to the README.
+>    - **public ≠ validated.** Stars/clones mean the pitch *reads* well; only a user saying "I changed my
+>      deploy because of this" is validation. Publishing is part of step 1 (credibility artifact), NOT a
+>      substitute for step 3 (real user conversations). Don't let "we shipped it" feel like "we proved it."
 > 2. **Pick ONE headline use case and make it airtight** — recommend *"where and when should I run this
 >    training job?"* Everything you show first should be that path, end to end.
 > 3. **Then the user conversation** (your side, out-of-session) — 3-5 people who actually make cloud/
