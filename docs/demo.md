@@ -6,7 +6,7 @@ mocked, not invented. Run the same calls yourself and you'll get current data.
 
 **The one-line pitch:** the same workload emits very different CO₂ depending on *where* and *when*
 you run it. GreenPick surfaces the greener choice — with the cost and latency tradeoff attached — at
-the moment you decide, inside your editor. Directional guidance, not audited accounting.
+the moment you decide, inside your editor. Fast, directional guidance built for the decision.
 
 > **Setup:** GreenPick runs as an MCP server (`python -m greenpick`). Point your MCP client at it,
 > set `EIA_API_KEY` + `ENTSOE_TOKEN` in `.env` (both free) for live carbon, and
@@ -119,17 +119,25 @@ inside the editor.
 
 ---
 
-## What GreenPick is NOT (the discipline)
+## Right-sized by design (the discipline)
 
-Said plainly, because it's the trust story:
-- **Directional, not audited.** Not Scope-2 / GHG-Protocol accounting — that's what paid vendors
-  (Electricity Maps, WattTime) are for. GreenPick is for *decisions*, not *disclosures*.
-- **An estimate, not a measurement.** Carbon = documented power model × live grid intensity. Cost is
-  a dated ballpark, not a quote. Latency is geographic, not a measured ping.
-- **Honest about its own limits.** It tells you when timing won't help, when a region filter matched
-  nothing, and when it's falling back to mock or historical data.
+GreenPick is **directional by choice** — and for a design-time decision, that's the right tool:
+fast, free, and in-context, so you can make the call in seconds without leaving the editor. The
+precision matches the moment.
 
-Every tool ships an `explain_methodology_and_limits` call that spells this out.
+- **Built for the choice, not the disclosure.** A region decision needs "Stockholm is ~30× cleaner
+  than Sydney" — not a certified number. When you later need audited Scope-2 / GHG-Protocol figures
+  for a *report*, that's a different job and a different tool (Electricity Maps, WattTime). GreenPick
+  gets you to the right decision; those certify it after the fact.
+- **An honest estimate, grounded in real data.** Carbon = a documented power model × *live* grid
+  intensity. Cost is a dated cross-cloud ballpark; latency is a geographic estimate. Every figure is
+  directional and labelled as such — no false precision.
+- **Candid about its own limits.** It tells you when timing *won't* help, when a region filter matched
+  nothing, and when it's on mock or historical data instead of live. You always know what you're
+  looking at.
+
+Every tool ships an `explain_methodology_and_limits` call that spells this out — the transparency is
+part of the product, not a footnote.
 
 ---
 
