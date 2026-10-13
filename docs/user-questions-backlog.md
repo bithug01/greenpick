@@ -121,6 +121,24 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
 - 🔭 "Where should I put this 5TB bucket to minimize carbon + egress to my users?" — storage-placement counterpart to compute placement; ties into the egress tool.
 - 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.
 
+### Data residency / sovereignty
+- 🔭 "Would moving compute to this region break data-residency rules (e.g. GDPR)?" — a residency-AWARENESS flag, NOT a compliance checker. **Spike done (2026-10-12), findings below.**
+
+> **Residency data spike (jurisdiction tagging):**
+> - GOAL: can we get a clean, STABLE jurisdiction tag per region, to flag cross-jurisdiction moves? YES.
+> - All 12 catalog regions tag cleanly: **EEA** = Ireland (eu-west-1, northeurope), Sweden (eu-north-1,
+>   swedencentral), Finland (europe-north1); **US** = us-east-1, us-west-2, us-east-nyc, us-central1,
+>   us-west1, eastus; **AU** = ap-southeast-2. No UK region in catalog → the thorny Brexit case doesn't arise.
+> - CORRECTNESS NOTE: the GDPR boundary is the **EEA** (27 EU + Norway/Iceland/Liechtenstein), not "EU".
+>   Tag the EEA. (Confirmed: ICO/EDPB.)
+> - WHAT TO ENCODE: only the stable `jurisdiction` tag (is the region in the EEA/US/AU/...). **Do NOT encode
+>   adequacy status or legal mechanisms** — those ROT fast (Brazil added adequacy Jan 2026; US framework is
+>   legally contested). Encoding them would be the CFE/leaderboard trap again.
+> - DESIGN: add `jurisdiction` to regions.json; recommendation tools raise a NEUTRAL heads-up when a move
+>   crosses jurisdictions (esp. leaving the EEA), stating only the geographic fact + the category of concern,
+>   with a HARD "GreenPick does not assess legal compliance — confirm with your own data governance" disclaimer.
+>   A flag, never a yes/no verdict. Add "does NOT determine legal compliance" to anti-questions.
+
 ### Vendor / grid nuance
 - 🔭 "Does this provider actually run this region on renewables, or is it just a clean grid?" — per-vendor CFE / renewable-matching data as a *real* axis (today we explicitly ignore RECs). Recorded earlier as "vendor-as-real-axis."
 - 🔭 "What's the sub-regional / availability-zone carbon difference?" — finer grid-zone mapping than our country-level approximation.
