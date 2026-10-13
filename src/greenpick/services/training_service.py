@@ -22,7 +22,7 @@ from ..models import (
 )
 from ..data.repository import CarbonRepository
 from ..data.static_data import gpu_power, resolve_gpu, power_model, iter_regions
-from . import carbon_service, scheduling_service
+from . import carbon_service, scheduling_service, residency_service
 
 
 def run_energy_kwh(gpu_key: str, gpu_count: int, gpu_hours: float,
@@ -181,6 +181,23 @@ async def estimate_training_carbon(
                     "little there — the region choice is the lever.")
 
     base.rationale = place_txt + time_txt
+
+    # Residency context: training usually means shipping a dataset INTO the recommended region.
+    # We don't know where the data lives, so we state the recommended region's jurisdiction as a
+    # neutral heads-up (not a verdict) — most pointed when it's inside the EEA.
+    jur = residency_service.jurisdiction_of(chosen_prov, chosen_region)
+    if jur:
+        where = residency_service._LABEL.get(jur, jur)
+        if jur == "EEA":
+            base.residency_note = (
+                f"RESIDENCY: the recommended region ({chosen_prov}/{chosen_region}) is in {where}. "
+                f"Shipping a training dataset in or out of the EEA can trigger GDPR transfer rules "
+                f"if it contains personal data. {residency_service.DISCLAIMER}")
+        else:
+            base.residency_note = (
+                f"RESIDENCY: the recommended region ({chosen_prov}/{chosen_region}) is in {where}. "
+                f"If your training data lives in another jurisdiction, moving it here may trigger "
+                f"residency rules. {residency_service.DISCLAIMER}")
     return base
 
 

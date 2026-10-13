@@ -10,7 +10,7 @@ from ..models import (
 )
 from ..data.repository import CarbonRepository
 from ..data.static_data import iter_regions
-from . import carbon_service, cost_service, latency_service
+from . import carbon_service, cost_service, latency_service, residency_service
 
 LIMITATIONS = (
     "Directional guidance, not audited accounting. Grid-zone mapping is approximate; "
@@ -170,9 +170,17 @@ async def compare_regions(
         )
         recommended = f"{pick.provider}/{pick.region}"
 
+    # Residency heads-up: does the recommended region sit in a different jurisdiction than the
+    # baseline (where they are today)? Neutral geographic flag, never a compliance verdict.
+    rec_prov, _, rec_region = recommended.partition("/")
+    residency_note = residency_service.residency_flag(
+        baseline.provider, baseline.region, rec_prov, rec_region,
+    )
+
     return Recommendation(
         candidates=sorted(candidates, key=lambda c: c.carbon_rank or 999),
         recommended_region=recommended,
+        residency_note=residency_note,
         rationale=rationale,
         limitations=LIMITATIONS,
     )

@@ -170,6 +170,7 @@ class TrainingCarbonAdvice(BaseModel):
     region: Optional[str] = None                  # the resolved/queried region (if one was given)
     options: list[TrainingRegionOption] = []      # ranked greener-first (when ranking regions)
     recommended_region: Optional[str] = None
+    residency_note: Optional[str] = None          # heads-up if the pick is in a different jurisdiction
     # Timing (reuses cleanest-hours scheduling for the chosen/greenest region):
     cleanest_hours: list[HourlyCarbon] = []
     cleanest_window: Optional["CleanestWindow"] = None   # set when the run is >= 2h wall-clock
@@ -197,6 +198,7 @@ class DataLocalityWarning(BaseModel):
     est_monthly_transfer_kg_co2: Optional[float] = None   # secondary, coarse
     carbon_saving_kg_co2_from_move: Optional[float] = None # echoed back if provided
     net_carbon_verdict: Optional[str] = None    # set only when a saving was supplied
+    residency_note: Optional[str] = None        # neutral cross-jurisdiction heads-up, if any
     warning: str = ""
     recommendation: str = ""
     limitations: str = ""
@@ -224,5 +226,6 @@ class Recommendation(BaseModel):
     """The full answer: ranked candidates + a pick + honest caveats."""
     candidates: list[RegionCandidate]
     recommended_region: Optional[str] = None
+    residency_note: Optional[str] = None        # neutral heads-up if the pick crosses jurisdictions
     rationale: str = ""
     limitations: str = ""

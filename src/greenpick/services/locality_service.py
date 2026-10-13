@@ -21,7 +21,7 @@ from typing import Optional
 from ..models import DataLocalityWarning, Provider, CarbonReading
 from ..data.repository import CarbonRepository
 from ..data.static_data import pricing, network_model
-from . import carbon_service
+from . import carbon_service, residency_service
 
 LIMITATIONS = (
     "Egress cost is DIRECTIONAL: a LOW-HIGH range for the locality tier (same-region / cross-region / "
@@ -141,6 +141,12 @@ async def data_locality_check(
         rec = ("Low exposure at this volume. The locality penalty is small — the region's "
                "carbon/latency/cost tradeoff probably dominates.")
 
+    # Residency heads-up: compute processing data that lives in another jurisdiction is exactly the
+    # residency-sensitive case. Flag the data-region -> compute-region crossing (neutral, not legal).
+    residency_note = residency_service.residency_flag(
+        data_provider, data_region, compute_provider, compute_region,
+    )
+
     return DataLocalityWarning(
         compute_location=compute_loc, data_location=data_loc,
         monthly_cross_boundary_gb=monthly_cross_boundary_gb,
@@ -149,6 +155,6 @@ async def data_locality_check(
         est_monthly_egress_usd_low=cost_low, est_monthly_egress_usd_high=cost_high,
         est_monthly_transfer_kg_co2=transfer_kg,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
-        net_carbon_verdict=verdict,
+        net_carbon_verdict=verdict, residency_note=residency_note,
         warning=warning, recommendation=rec, limitations=LIMITATIONS,
     )

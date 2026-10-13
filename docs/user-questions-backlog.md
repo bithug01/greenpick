@@ -122,7 +122,7 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
 - 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.
 
 ### Data residency / sovereignty
-- 🔭 "Would moving compute to this region break data-residency rules (e.g. GDPR)?" — a residency-AWARENESS flag, NOT a compliance checker. **Spike done (2026-10-12), findings below.**
+- ✅ "Would moving compute to this region break data-residency rules (e.g. GDPR)?" — SHIPPED as a residency-AWARENESS flag (NOT a compliance checker): `jurisdiction` tags in regions.json + a neutral cross-jurisdiction heads-up on compare/greener_alternative, estimate_training_carbon, and data_locality_egress_check, with a hard "not legal advice, confirm with governance" disclaimer. **Spike findings below.**
 
 > **Residency data spike (jurisdiction tagging):**
 > - GOAL: can we get a clean, STABLE jurisdiction tag per region, to flag cross-jurisdiction moves? YES.
@@ -163,6 +163,7 @@ GreenPick honest.
   real egress pricing (tiers, inter-region pairs, free allowances) is a quote, not our job.
 - ❌ "Act as a live scheduler / actually move my workload." — design-time advice, not an orchestrator.
 - ❌ "Give me a greenness leaderboard / letter-grade of named commercial LLMs (Claude vs GPT vs Llama)." — built on per-token energy and serving-hardware figures vendors don't disclose, stale every release, drifts into disclosure/marketing. We'll ESTIMATE per-inference carbon by model SIZE CLASS (esp. self-hosted), but not grade named products. Same discipline as the free-tier comparator and CFE axis.
+- ❌ "Is it legally compliant to run this in region X? / Is this GDPR-ok?" — GreenPick determines NO legal compliance. It flags cross-jurisdiction moves (esp. leaving the EEA) as a geographic heads-up with a hard "confirm with your own governance" disclaimer, and encodes NO adequacy status (that rots). Residency is a flag, never a verdict.
 
 ---
 

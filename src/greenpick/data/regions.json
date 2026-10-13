@@ -1,21 +1,22 @@
 {
   "_comment": "Minimal v1 region catalog: coordinates (for latency estimate) and an approximate grid-zone key (for carbon lookup). Zone mapping is country/zone-approximate — a known v1 limitation. Expand as needed.",
+  "_jurisdiction_comment": "'jurisdiction' is a STABLE geographic tag (EEA / US / AU / ...), used ONLY to flag when a recommended move crosses a data-residency boundary (esp. leaving the EEA). It is NOT a compliance verdict and encodes NO legal/adequacy status (those change — e.g. EU adequacy lists and the US framework shift over time). GreenPick flags the crossing; the user confirms legality with their own data governance. EEA = 27 EU states + Norway/Iceland/Liechtenstein (the GDPR transfer boundary).",
   "aws": {
-    "us-east-1":      { "name": "N. Virginia",   "lat": 38.95, "lon": -77.45, "zone": "US-MIDA-PJM", "eia_ba": "PJM" },
-    "us-west-2":      { "name": "Oregon",        "lat": 45.87, "lon": -119.69, "zone": "US-NW-PACW", "eia_ba": "BPAT" },
-    "eu-west-1":      { "name": "Ireland",       "lat": 53.41, "lon": -8.24,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C" },
-    "eu-north-1":     { "name": "Stockholm",     "lat": 59.33, "lon": 18.07,  "zone": "SE", "entsoe_eic": "10YSE-1--------K" },
-    "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW" },
-    "us-east-nyc":    { "name": "New York (NYISO)", "lat": 40.71, "lon": -74.01, "zone": "US-NY-NYIS", "eia_ba": "NYIS" }
+    "us-east-1":      { "name": "N. Virginia",   "lat": 38.95, "lon": -77.45, "zone": "US-MIDA-PJM", "eia_ba": "PJM", "jurisdiction": "US" },
+    "us-west-2":      { "name": "Oregon",        "lat": 45.87, "lon": -119.69, "zone": "US-NW-PACW", "eia_ba": "BPAT", "jurisdiction": "US" },
+    "eu-west-1":      { "name": "Ireland",       "lat": 53.41, "lon": -8.24,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C", "jurisdiction": "EEA" },
+    "eu-north-1":     { "name": "Stockholm",     "lat": 59.33, "lon": 18.07,  "zone": "SE", "entsoe_eic": "10YSE-1--------K", "jurisdiction": "EEA" },
+    "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW", "jurisdiction": "AU" },
+    "us-east-nyc":    { "name": "New York (NYISO)", "lat": 40.71, "lon": -74.01, "zone": "US-NY-NYIS", "eia_ba": "NYIS", "jurisdiction": "US" }
   },
   "gcp": {
-    "us-central1":    { "name": "Iowa",          "lat": 41.26, "lon": -95.86, "zone": "US-MIDW-MISO", "eia_ba": "MISO" },
-    "europe-north1":  { "name": "Finland",       "lat": 60.57, "lon": 27.19,  "zone": "FI", "entsoe_eic": "10YFI-1--------U" },
-    "us-west1":       { "name": "Oregon",        "lat": 45.60, "lon": -121.18, "zone": "US-NW-PACW", "eia_ba": "BPAT" }
+    "us-central1":    { "name": "Iowa",          "lat": 41.26, "lon": -95.86, "zone": "US-MIDW-MISO", "eia_ba": "MISO", "jurisdiction": "US" },
+    "europe-north1":  { "name": "Finland",       "lat": 60.57, "lon": 27.19,  "zone": "FI", "entsoe_eic": "10YFI-1--------U", "jurisdiction": "EEA" },
+    "us-west1":       { "name": "Oregon",        "lat": 45.60, "lon": -121.18, "zone": "US-NW-PACW", "eia_ba": "BPAT", "jurisdiction": "US" }
   },
   "azure": {
-    "eastus":         { "name": "Virginia",      "lat": 37.37, "lon": -79.82, "zone": "US-MIDA-PJM", "eia_ba": "PJM" },
-    "northeurope":    { "name": "Ireland",       "lat": 53.35, "lon": -6.26,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C" },
-    "swedencentral":  { "name": "Sweden",        "lat": 60.67, "lon": 17.14,  "zone": "SE", "entsoe_eic": "10YSE-1--------K" }
+    "eastus":         { "name": "Virginia",      "lat": 37.37, "lon": -79.82, "zone": "US-MIDA-PJM", "eia_ba": "PJM", "jurisdiction": "US" },
+    "northeurope":    { "name": "Ireland",       "lat": 53.35, "lon": -6.26,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C", "jurisdiction": "EEA" },
+    "swedencentral":  { "name": "Sweden",        "lat": 60.67, "lon": 17.14,  "zone": "SE", "entsoe_eic": "10YSE-1--------K", "jurisdiction": "EEA" }
   }
 }

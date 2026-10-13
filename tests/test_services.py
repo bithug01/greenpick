@@ -421,6 +421,64 @@ async def test_training_unknown_gpu_is_handled():
     assert "unknown gpu" in adv.rationale.lower()
 
 
+# --- Data-residency awareness (geographic flag, not a compliance verdict) ---
+
+from greenpick.services import residency_service
+
+
+def test_residency_flag_leaving_eea_is_called_out():
+    # Ireland (EEA) -> Oregon (US): leaving the EEA, the high-stakes direction.
+    note = residency_service.residency_flag("aws", "eu-west-1", "aws", "us-west-2")
+    assert note is not None
+    assert "EEA" in note
+    assert "GDPR" in note
+    assert "does not assess legal compliance" in note.lower()
+
+
+def test_residency_flag_same_jurisdiction_is_none():
+    # Two US regions -> no crossing, no flag.
+    assert residency_service.residency_flag("aws", "us-east-1", "aws", "us-west-2") is None
+    # Ireland -> Sweden, both EEA -> no flag.
+    assert residency_service.residency_flag("aws", "eu-west-1", "aws", "eu-north-1") is None
+
+
+def test_residency_flag_crossing_non_eea_is_neutral():
+    # US -> AU: a crossing, flagged, but NOT the EEA-specific wording.
+    note = residency_service.residency_flag("aws", "us-east-1", "aws", "ap-southeast-2")
+    assert note is not None
+    assert "crosses jurisdictions" in note.lower()
+    assert "GDPR" not in note          # only called out when leaving the EEA
+    assert "does not assess legal compliance" in note.lower()
+
+
+@pytest.mark.asyncio
+async def test_recommender_sets_residency_note_when_pick_leaves_eea():
+    repo = MockCarbonRepository()
+    user = GeoPoint(lat=53.3, lon=-6.3)   # Dublin-ish
+    wl = Workload(vcpu=2, ram_gb=4)
+    # Baseline Ireland (EEA); the mock makes Sweden cleanest (also EEA) so NO flag normally —
+    # but if we baseline in the EEA and the global cleanest is EEA too, no crossing. Force a
+    # cross by restricting to US regions with an EEA baseline.
+    rec = await recommender.compare_regions(
+        repo, None, user, wl, optimize_for="carbon",
+        baseline_region="eu-west-1", regions=["us-east-1", "us-west-2"],
+    )
+    assert rec.residency_note is not None
+    assert "EEA" in rec.residency_note
+
+
+@pytest.mark.asyncio
+async def test_locality_sets_residency_note_cross_jurisdiction():
+    from greenpick.services import locality_service   # imported here; module-level import is later
+    repo = MockCarbonRepository()
+    # Data in the EEA (Ireland), compute in the US -> residency flag present.
+    w = await locality_service.data_locality_check(
+        repo, "aws", "us-east-1", "aws", "eu-west-1", monthly_cross_boundary_gb=500,
+    )
+    assert w.residency_note is not None
+    assert "EEA" in w.residency_note
+
+
 # --- Forward-looking forecast ---
 
 from greenpick.services import forecast_service

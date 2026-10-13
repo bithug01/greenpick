@@ -140,6 +140,10 @@ precision matches the moment.
 - **Candid about its own limits.** It tells you when timing *won't* help, when a region filter matched
   nothing, and when it's on mock or historical data instead of live. You always know what you're
   looking at.
+- **Flags data-residency, doesn't rule on it.** When a recommendation would move compute across a
+  jurisdiction (e.g. *out of the EEA*), GreenPick raises a neutral heads-up — "GDPR transfer rules may
+  apply; confirm with your own governance." It states the geography and the concern; it never claims a
+  move is or isn't legally compliant. Residency is a flag, not a verdict.
 
 Every tool ships an `explain_methodology_and_limits` call that spells this out — the transparency is
 part of the product, not a footnote.

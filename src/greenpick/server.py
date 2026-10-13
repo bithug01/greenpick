@@ -242,6 +242,7 @@ def explain_methodology_and_limits() -> dict:
         "data_locality": "Egress check leads with a DIRECTIONAL cost ballpark (flat per-GB, ignores free tiers/tiered pricing); transfer carbon uses a single kWh/GB coefficient whose published estimates span orders of magnitude — order-of-magnitude only.",
         "training": "Training carbon uses published GPU TDP (peak, not your run's measured draw) x a utilization assumption + host overhead x PUE, then x the region's grid intensity. GPU availability per region is NOT checked. Ignores spot/on-demand, checkpointing, multi-node networking.",
         "forecast": "Day-ahead forecast is RELATIVE: upcoming hours ranked by forecast wind+solar output (ENTSO-E A69), not an absolute gCO2/kWh forecast. EU only; US/uncovered zones degrade to the recent historical pattern (labelled 'historical').",
+        "data_residency": "GreenPick flags when a recommended move CROSSES a jurisdiction (esp. leaving the EEA) as a geographic heads-up only. It does NOT assess legal/GDPR compliance, does not encode adequacy decisions, and is not legal advice — confirm with your own data governance.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
         "data_sources": "Electricity Maps free tier (primary); ENTSO-E / EIA / NESO fallbacks; annual averages offline.",
     }
