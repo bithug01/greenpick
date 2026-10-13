@@ -137,6 +137,31 @@ GreenPick honest.
 
 ---
 
+## Business model (NOT features) — park, don't build
+
+These are revenue/strategy directions, not tools. Recorded so they're not lost, but they are
+founder/market bets, not engineering tasks. Do NOT let them pull the engine off its honest line.
+
+### Professional services around sustainability business objectives
+- **What it is:** not a third *surface* (that's the MCP + dashboard, which share one engine). This is a
+  different *business model* that would USE the engine as one input. Different house, not a third door.
+- **Why it's attractive:** likely the LARGEST revenue prize in the whole picture — bigger than the tool
+  earns directly. Companies already pay real money for "help us hit our sustainability objectives" (ESG
+  mandates, CSRD, cloud-cost-is-also-carbon). GreenPick is a credible *wedge*: you show up as "the people
+  who built the carbon-aware deployment tooling," tool = proof-of-expertise + lead-gen, engagement = revenue.
+- **The trap (this is the important part):** services clients want AUDITED numbers (Scope-2 / GHG-Protocol)
+  and regulated advice (procurement, CSRD audit readiness) — exactly what the engine REFUSES to fake. That
+  pulls the engine toward the overclaiming its integrity is built on avoiding. You'd either compromise the
+  tool's honesty, or stand up a SEPARATE audited data layer (paid vendors: Electricity Maps / WattTime)
+  beside the directional engine. Real work, real identity question.
+- **It runs THROUGH validation, doesn't skip it:** you can't pitch a services engagement without a credible
+  artifact to point at — i.e. the demo + user conversations at the top of this doc. If an early user says
+  "can you just help us DO this," that IS the signal the services model has pull — discovered for free.
+- **Status:** unvalidated, bigger unknown than the tool itself ("will a company pay YOU to steer their
+  sustainability strategy" is a market question, not an engineering one). Revisit only after the user step.
+
+---
+
 ## How to use this doc
 
 When a new question comes up (yours or a user's), add it to the right section. If a question keeps
