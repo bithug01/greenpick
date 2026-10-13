@@ -55,7 +55,9 @@ LIMITATIONS = (
     "Energy is DIRECTIONAL: published GPU TDP (peak, not your run's measured draw) x a utilization "
     "assumption + host overhead x PUE. Carbon = energy x the region's grid intensity. GPU AVAILABILITY "
     "per region is NOT checked — verify the card you need is offered there. Ignores spot/on-demand, "
-    "checkpointing, multi-node networking, and embodied hardware carbon."
+    "checkpointing, multi-node networking, and embodied hardware carbon. Training datasets are often "
+    "large and may live in another region: shipping them to the greenest region can incur significant "
+    "EGRESS cost and transfer carbon — run data_locality_egress_check before moving the job."
 )
 
 

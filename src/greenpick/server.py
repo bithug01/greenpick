@@ -36,7 +36,9 @@ async def compare_regions_tri_axis(
     """Rank candidate cloud regions by carbon, with cost + latency tradeoffs, and recommend one.
     Give the user's location (lat/lon) and the service shape (vcpu, ram_gb, egress). Pass `regions`
     (e.g. ["us-east-1","us-west-2","eu-west-1"]) to rank ONLY those you'd actually consider,
-    instead of the whole catalog — your baseline is always kept in the comparison."""
+    instead of the whole catalog — your baseline is always kept in the comparison. If the pick is
+    in a different region from where your data lives, run data_locality_egress_check before moving:
+    cross-region/cross-cloud egress can erase the carbon/cost win."""
     rec = await recommender.compare_regions(
         _repo,
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
@@ -65,7 +67,8 @@ async def greener_alternative_to(
     """You picked `current_region` — find the greenest region within +max_added_latency_ms,
     with the carbon/cost/latency delta vs. your current choice. The core 'nudge' tool. Pass
     `regions` to limit the search to options you'd actually move to; your current region is
-    always included."""
+    always included. Before accepting a move, run data_locality_egress_check if your data stays in
+    the current region — the egress to feed compute from afar can outweigh the greener-region win."""
     rec = await recommender.compare_regions(
         _repo,
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
@@ -214,7 +217,9 @@ async def estimate_training_carbon(
     Give the GPU (e.g. 'a100', 'h100', 'l4'), how many, and total GPU-hours for the run. Omit
     `region` to rank regions greenest-first; pass one to score just that region. Training is both
     portable and deferrable, so this combines region choice with cleanest-hours timing. Directional
-    (TDP-based energy); GPU availability per region is NOT checked - verify your card is offered there."""
+    (TDP-based energy); GPU availability per region is NOT checked - verify your card is offered there.
+    Training data is often large: if your dataset lives in another region, run data_locality_egress_check
+    before shipping the job to the greenest region - the data egress can outweigh the carbon saving."""
     advice = await training_service.estimate_training_carbon(
         _repo, gpu, gpu_count, gpu_hours,  # type: ignore[arg-type]
         region=region, provider=provider, utilization=utilization,  # type: ignore[arg-type]

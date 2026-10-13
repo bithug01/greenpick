@@ -16,7 +16,9 @@ LIMITATIONS = (
     "Directional guidance, not audited accounting. Grid-zone mapping is approximate; "
     "carbon is point-in-time (not flow-traced consumption); cost is a ballpark, not a quote; "
     "latency is a geographic estimate. 'Greener' assumes grid intensity dominates and ignores "
-    "embodied/hardware carbon and provider renewable-energy certificates."
+    "embodied/hardware carbon and provider renewable-energy certificates. "
+    "Also: moving compute to a greener region can incur cross-region/cross-cloud EGRESS cost and "
+    "transfer carbon if your data stays put — run data_locality_egress_check before you move."
 )
 
 

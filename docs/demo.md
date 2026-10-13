@@ -45,6 +45,10 @@ a real training run it's kilograms you can actually move. This is the decision G
 
 > Note the honesty: Sweden's grid is so clean *and* flat that GreenPick tells you timing won't help
 > much there — "the region choice is the lever." It doesn't manufacture a benefit that isn't there.
+>
+> And it doesn't let you take the win blindly: the recommendation itself reminds you that if your
+> training data lives elsewhere, shipping it to Stockholm can incur egress that erases the saving —
+> which is exactly Scenario 2.
 
 ---
 
