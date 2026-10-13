@@ -17,11 +17,10 @@
 > duplicated logic.**
 >
 > **Do these in order:**
-> 1. **Build the demo artifact.** Goal: make a user conversation possible by showing the strongest path
->    without asking anyone to wire up MCP. Two valid forms — pick per audience:
->    - `docs/demo.md` — 3-4 copy-paste scenarios in narrative order (fastest to write), OR
->    - a **thin demo dashboard** — richer vehicle for a non-technical stakeholder, pointed at the SAME
->      services (no duplicated logic). For most stakeholders the webpage is the better demo.
+> 1. ✅ **Demo artifact — DONE (markdown).** `docs/demo.md` written with the 3 headline scenarios in
+>    narrative order (training → egress backfire → forecast), every number captured LIVE from the tools.
+>    Still open: a **thin demo dashboard** on the SAME services for a non-technical stakeholder (webpage
+>    is the better vehicle there) — build if/when you need it for that audience.
 >    Either way, **lead with `estimate_training_carbon`** (the 96% region swing on a real H100 run — the
 >    one place the carbon signal is big enough to change behaviour), then `data_locality_egress_check`
 >    (the backfire catch), then `carbon_forecast`.
