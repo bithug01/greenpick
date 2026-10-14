@@ -133,6 +133,13 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
 
 ### Data & storage
 - 🔭 "Where should I put this 5TB bucket to minimize carbon + egress to my users?" — storage-placement counterpart to compute placement; ties into the egress tool.
+- 🔭 `data_profile` — an OPTIONAL modifier (not a new standalone tool) on existing tools (egress, serving_pattern, training): `structured` / `unstructured-blob` / `image` / `video` / `logs`. Data TYPE strongly predicts which of our axes dominates, because our carbon/egress/serving math is byte- and compute-driven: a DB row is bytes, an image is MBs, a minute of video is tens-hundreds of MB — the SAME "move the data" decision is ~1000× the egress/transfer-carbon for video vs structured.
+  - **Three honest jobs:** (1) set REALISTIC volume defaults when the user doesn't know their GB (video → large egress; structured → small-but-chatty); (2) RE-ORDER which caveat leads (video → egress/CDN warning first; structured transactional → data-sync/latency/residency first); (3) flag the type-specific carbon driver (image/video → GPU-bound, see training/instance tools; structured analytics → region carbon dominates).
+  - **Lens, NOT a detector or a verdict.** GreenPick can't see the user's data; the user/agent supplies the profile (model-mediated, like everything else). **No per-type carbon NUMBERS** (e.g. "video = X gCO₂/GB") — made-up coefficients. Volume defaults are rough → loud "override me" labels, like the user-geography input. Strictly optional so simple cases stay simple.
+  - **Flagged future gap it surfaces:** media/video is egress-DOMINANT (served out repeatedly), so "where you SERVE from + CDN/edge" matters far more than "where you compute" — our serving_pattern tool reasons about origin regions, not edge caching. **Media/CDN-aware serving** may deserve its own future tool; data type is what reveals the blind spot.
+
+### Graphics / visuals (for demo + README)
+- ✅ Four SVGs in `docs/img/`: region-carbon-30x (hero — same H100 run, 30× between Stockholm/Sydney), cleanest-hours-us-west-2 (24h curve, ~57% overnight), egress-by-tier (the $270→$30-60/$255-360 correction), decision-flow (where→check→when). Real data, self-labelled directional. Hero + curve embedded in demo.md.
 - 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.
 
 ### Data residency / sovereignty

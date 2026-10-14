@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 440" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <rect width="760" height="440" fill="#ffffff"/>
+  <text x="40" y="44" font-size="23" font-weight="700" fill="#0f172a">Egress, priced by the right tier</text>
+  <text x="40" y="72" font-size="14.5" fill="#475569">Moving 3 TB/month between where data lives and where compute runs. One flat rate hides the truth.</text>
+
+  <text x="40" y="134" font-size="13" font-weight="700" fill="#64748b">BEFORE — one flat rate</text>
+  <rect x="300" y="118" width="351" height="30" rx="3" fill="#94a3b8"/>
+  <text x="300" y="166" font-size="12.5" fill="#64748b">aws flat $0.09/GB applied to everything</text>
+  <text x="658" y="138" font-size="13.5" font-weight="700" fill="#475569">~$270/mo</text>
+  <text x="300" y="183" font-size="12" fill="#dc2626">↑ overstated ~5–9× for the common same-cloud case</text>
+
+  <line x1="40" y1="202" x2="720" y2="202" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="40" y="228" font-size="13" font-weight="700" fill="#16a34a">AFTER — the tier you're actually in</text>
+
+  <rect x="300" y="244" width="4" height="26" rx="2" fill="#16a34a"/>
+  <text x="290" y="262" font-size="13" fill="#334155" text-anchor="end">same region</text>
+  <text x="312" y="262" font-size="13" font-weight="600" fill="#16a34a">~$0 — free</text>
+
+  <rect x="300" y="284" width="65" height="26" rx="2" fill="#65a30d"/>
+  <text x="290" y="302" font-size="13" fill="#334155" text-anchor="end">cross-region, same cloud</text>
+  <text x="372" y="302" font-size="13" font-weight="700" fill="#4d7c0f">$30–$60/mo  ($0.01–0.02/GB)</text>
+
+  <rect x="300" y="324" width="390" height="26" rx="2" fill="#dc2626"/>
+  <text x="290" y="342" font-size="13" fill="#334155" text-anchor="end">cross-cloud / internet</text>
+  <text x="684" y="342" font-size="13" font-weight="700" fill="#ffffff" text-anchor="end">$255–$360/mo</text>
+
+  <text x="40" y="392" font-size="15" fill="#0f172a">The same 3 TB is <tspan font-weight="700" fill="#4d7c0f">~$45</tspan> within one cloud, but <tspan font-weight="700" fill="#dc2626">~$300</tspan> across clouds. <tspan font-weight="700">Which tier you're in is the point.</tspan></text>
+  <text x="40" y="416" font-size="12" fill="#94a3b8">GreenPick · directional list-price ranges; excludes free-tier allowances, committed-use discounts, exact region-pair rates.</text>
+</svg>

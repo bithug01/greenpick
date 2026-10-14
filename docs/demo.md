@@ -39,6 +39,8 @@ Greenest: aws/eu-north-1 at ~0.7 kg CO₂ — ~97% less than the dirtiest
 option (aws/ap-southeast-2, ~19.4 kg).
 ```
 
+![Same H100 run, carbon by region — 30× between Stockholm and Sydney](img/region-carbon-30x.svg)
+
 **Why this matters:** the *same* 40-GPU-hour run is **~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney —
 a ~30× difference from region choice alone.** On a small always-on web service that gap is grams; on
 a real training run it's kilograms you can actually move. This is the decision GreenPick exists for.
@@ -105,6 +107,10 @@ Forecast cleanest upcoming hours (by renewable share):
 Cleanest ~20:00, dirtiest ~11:00. Shift deferrable work toward the
 cleanest upcoming hours.
 ```
+
+![Cleanest hours to run in us-west-2 — overnight trough vs evening peak, ~57%](img/cleanest-hours-us-west-2.svg)
+
+*(The curve above is the live us-west-2 daily pattern — the same "find the clean window" logic, shown over a full day where the trough is clearly visible. The forecast tool applies this forward.)*
 
 **Why this matters:** this turns scheduling from *reactive* ("when has it been clean lately?") to
 *planned* ("start it at 20:00 tomorrow"). It's a **relative** signal — more forecast renewables =

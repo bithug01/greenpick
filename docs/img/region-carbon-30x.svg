@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <rect width="760" height="460" fill="#ffffff"/>
+  <text x="40" y="46" font-size="23" font-weight="700" fill="#0f172a">Same training run, 30× the carbon — depending only on region</text>
+  <text x="40" y="74" font-size="14.5" fill="#475569">1× NVIDIA H100 · 40 GPU-hours · ~33 kWh · live grid intensity (EIA / ENTSO-E)</text>
+
+  <line x1="300" y1="110" x2="300" y2="372" stroke="#e2e8f0" stroke-width="1"/>
+
+  <rect x="300" y="120" width="15" height="34" rx="3" fill="#16a34a"/>
+  <text x="290" y="141" font-size="13.5" fill="#334155" text-anchor="end">aws/eu-north-1 · Stockholm</text>
+  <text x="324" y="141" font-size="13.5" font-weight="700" fill="#16a34a">0.66 kg CO₂</text>
+
+  <rect x="300" y="168" width="57" height="34" rx="3" fill="#65a30d"/>
+  <text x="290" y="189" font-size="13.5" fill="#334155" text-anchor="end">aws/eu-west-1 · Ireland</text>
+  <text x="366" y="189" font-size="13.5" font-weight="600" fill="#4d7c0f">2.6 kg</text>
+
+  <rect x="300" y="216" width="71" height="34" rx="3" fill="#ca8a04"/>
+  <text x="290" y="237" font-size="13.5" fill="#334155" text-anchor="end">aws/us-west-2 · Oregon</text>
+  <text x="380" y="237" font-size="13.5" font-weight="600" fill="#a16207">3.3 kg</text>
+
+  <rect x="300" y="264" width="151" height="34" rx="3" fill="#ea580c"/>
+  <text x="290" y="285" font-size="13.5" fill="#334155" text-anchor="end">aws/us-east-1 · Virginia</text>
+  <text x="460" y="285" font-size="13.5" font-weight="600" fill="#c2410c">7.0 kg</text>
+
+  <rect x="300" y="312" width="419" height="34" rx="3" fill="#dc2626"/>
+  <text x="290" y="333" font-size="13.5" fill="#334155" text-anchor="end">aws/ap-southeast-2 · Sydney</text>
+  <text x="710" y="333" font-size="13.5" font-weight="700" fill="#ffffff" text-anchor="end">19.4 kg CO₂</text>
+
+  <text x="40" y="406" font-size="15" fill="#0f172a"><tspan font-weight="700" fill="#16a34a">Stockholm</tspan> vs <tspan font-weight="700" fill="#dc2626">Sydney</tspan>: the identical job, ~<tspan font-weight="700">30× cleaner</tspan> — a choice made at design time, in the editor.</text>
+  <text x="40" y="432" font-size="12" fill="#94a3b8">GreenPick · directional estimate (documented power model × live grid intensity), not audited accounting.</text>
+</svg>

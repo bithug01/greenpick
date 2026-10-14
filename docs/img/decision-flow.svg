@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 440" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <rect width="760" height="440" fill="#ffffff"/>
+  <text x="40" y="44" font-size="23" font-weight="700" fill="#0f172a">One carbon-aware deployment decision, in the editor</text>
+  <text x="40" y="72" font-size="14.5" fill="#475569">GreenPick doesn't just rank regions — it chains the tradeoffs a greener choice actually hits.</text>
+
+  <rect x="40" y="104" width="680" height="78" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <circle cx="78" cy="143" r="18" fill="#16a34a"/>
+  <text x="78" y="149" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="112" y="136" font-size="16" font-weight="700" fill="#15803d">WHERE — pick a greener region</text>
+  <text x="112" y="160" font-size="13.5" fill="#334155">"Train in Stockholm, not Sydney" — ~30× less carbon for the same run.  (compare_regions / estimate_training_carbon)</text>
+
+  <path d="M380 182 L380 198" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="40" y="206" width="680" height="78" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+  <circle cx="78" cy="245" r="18" fill="#d97706"/>
+  <text x="78" y="251" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="112" y="238" font-size="16" font-weight="700" fill="#b45309">CHECK — would it backfire?</text>
+  <text x="112" y="262" font-size="13.5" fill="#334155">Data stays put? Egress + residency may erase the win. Crossing the EEA? Flag it.  (data_locality_egress_check)</text>
+
+  <path d="M380 284 L380 300" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="40" y="308" width="680" height="78" rx="10" fill="#eff6ff" stroke="#0ea5e9" stroke-width="1.5"/>
+  <circle cx="78" cy="347" r="18" fill="#0ea5e9"/>
+  <text x="78" y="353" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="112" y="340" font-size="16" font-weight="700" fill="#0369a1">WHEN — time it to the clean hours</text>
+  <text x="112" y="364" font-size="13.5" fill="#334155">Deferrable? Start at the forecast-cleanest window for a further cut.  (carbon_forecast / cleanest_hours_to_run)</text>
+
+  <text x="40" y="420" font-size="12" fill="#94a3b8">GreenPick · directional, design-time guidance — fast, in-context, with the tradeoffs stated. Not audited accounting.</text>
+
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="4.5" refY="7" orient="auto">
+      <path d="M0 0 L4.5 7 L9 0" fill="#94a3b8"/>
+    </marker>
+  </defs>
+</svg>
