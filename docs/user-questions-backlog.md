@@ -124,6 +124,13 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
   - **Trigger via description, not file-scanning:** an MCP server can't see the user's codebase; the host agent can. So the tool DESCRIPTION invites the agent to offer it when the user is building a user-facing platform/service. Context-aware nudge, model-mediated.
   - **Caveat:** user-geography is a soft, often-unknown-at-design-time input → accept rough % buckets, label directional loudly.
 
+### Runtime carbon visibility (instrument the app, don't meter it)
+- ✅ "Add a carbon metric to my app so I can see its footprint over time." — SHIPPED as `carbon_metric_scaffold` (Python v1; emits valid, self-labelled code with live grid baked in — verified by compile+exec tests). GreenPick EMITS instrumentation code the builder pastes in; it does NOT run or measure anything itself. (Other languages: port the methodology formula — easy follow-on.)
+  - **The honest core:** software can't read its own wattage. The app measures the cheap PROXIES it CAN observe (CPU util, vCPU/RAM, region, uptime), then applies GreenPick's power model (power.json) × live grid intensity (region_carbon_now) → an ESTIMATED gCO₂. GreenPick's value = it supplies the coefficients that make the metric meaningful; a bare CPU% metric says nothing about energy.
+  - **Deliverable = snippet + coefficients + methodology note.** A paste-in code block (Python v1), the power coefficients, and a comment block citing the model + limits. NOT a framework/SDK (that's a different, bigger product — resist).
+  - **Self-labeling, loudly.** The generated metric is named `estimated_gco2*` with a comment that it's a DIRECTIONAL estimate from proxies × GreenPick's model, not metered energy. It'll live in production dashboards and get quoted, so it must not read as truth. If it can't be made clearly self-labeling, don't ship.
+  - **v1 = SELF-tracking, not cross-app ranking.** Track YOUR app's estimated carbon over time / versions / regions / load. Cross-app comparison needs a shared spec (same proxies, boundaries, coefficients) or it's noise — that's the leaderboard trap; defer.
+
 ### Data & storage
 - 🔭 "Where should I put this 5TB bucket to minimize carbon + egress to my users?" — storage-placement counterpart to compute placement; ties into the egress tool.
 - 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.

@@ -181,6 +181,24 @@ class TrainingCarbonAdvice(BaseModel):
     limitations: str = ""
 
 
+class CarbonMetricScaffold(BaseModel):
+    """Paste-in instrumentation so an app can emit its OWN estimated carbon metric.
+
+    GreenPick supplies the code + the coefficients that make it meaningful; the app measures the
+    observable proxies (CPU util, vCPU/RAM, uptime) and multiplies by GreenPick's power model and
+    the region's grid intensity. The emitted number is a DIRECTIONAL estimate, not metered energy."""
+    language: str
+    region: Optional[str] = None
+    grid_intensity_g_co2_per_kwh: Optional[float] = None   # baked in if a region was given
+    carbon_source: Optional[str] = None
+    carbon_quality: Optional[str] = None
+    coefficients: dict = {}                                 # the power-model constants used
+    code: str = ""                                          # the snippet to paste in
+    how_to_use: str = ""
+    methodology: str = ""
+    limitations: str = ""
+
+
 class ServingHub(BaseModel):
     """One cluster of users, as a share of total traffic, located at a point."""
     name: str                                   # e.g. "eu", "us", "apac", or a city

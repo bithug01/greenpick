@@ -421,6 +421,69 @@ async def test_training_unknown_gpu_is_handled():
     assert "unknown gpu" in adv.rationale.lower()
 
 
+# --- Carbon metric scaffold (emit instrumentation code) ---
+
+from greenpick.services import metric_scaffold_service
+
+
+@pytest.mark.asyncio
+async def test_metric_scaffold_emits_valid_python_with_coefficients():
+    repo = MockCarbonRepository()
+    s = await metric_scaffold_service.carbon_metric_scaffold(repo, language="python", vcpu=2, ram_gb=4)
+    assert s.language == "python"
+    # Coefficients come from the real power model.
+    from greenpick.data.static_data import power_model
+    pm = power_model()
+    assert s.coefficients["watts_per_vcpu"] == pm["watts_per_vcpu"]
+    # The emitted code must be SYNTACTICALLY VALID Python (we're shipping code to paste in).
+    compile(s.code, "<scaffold>", "exec")
+    # And it must be self-labelled as an estimate, not metered energy.
+    assert "estimated_gco2" in s.code.lower()
+    assert "not a measurement" in s.code.lower() or "not metered" in s.limitations.lower()
+    assert s.limitations and s.methodology
+
+
+@pytest.mark.asyncio
+async def test_metric_scaffold_bakes_in_grid_intensity_for_region():
+    repo = MockCarbonRepository()
+    s = await metric_scaffold_service.carbon_metric_scaffold(
+        repo, language="python", region="us-east-1", vcpu=2, ram_gb=4,
+    )
+    assert s.grid_intensity_g_co2_per_kwh is not None
+    # The baked-in grid value should appear in the generated code (not left as None).
+    assert "_GRID_G_CO2_PER_KWH = None" not in s.code
+    compile(s.code, "<scaffold>", "exec")
+
+
+@pytest.mark.asyncio
+async def test_metric_scaffold_emitted_estimator_computes_sanely():
+    # Execute the emitted snippet and check the estimator behaves: more CPU -> more gCO2,
+    # and no grid intensity -> None (honest, not a fake zero).
+    repo = MockCarbonRepository()
+    s = await metric_scaffold_service.carbon_metric_scaffold(
+        repo, language="python", region="us-east-1", vcpu=4, ram_gb=8,
+    )
+    ns: dict = {}
+    exec(s.code, ns)
+    Est = ns["CarbonEstimator"]
+    e = Est(vcpu=4, ram_gb=8)
+    low = e.estimated_gco2_per_hour(0.1)
+    high = e.estimated_gco2_per_hour(0.9)
+    assert low is not None and high is not None and high > low
+    # With no grid intensity, carbon is None (can't honestly estimate), not 0.
+    e2 = Est(vcpu=4, ram_gb=8, grid_g_co2_per_kwh=None)
+    assert e2.estimated_gco2_per_hour(0.5) is None
+
+
+@pytest.mark.asyncio
+async def test_metric_scaffold_unsupported_language_is_honest():
+    repo = MockCarbonRepository()
+    s = await metric_scaffold_service.carbon_metric_scaffold(repo, language="cobol")
+    assert s.code == ""
+    assert "not supported" in s.how_to_use.lower()
+    assert s.methodology   # still explains the math so it ports
+
+
 # --- Serving-pattern advice (single vs multi-region) ---
 
 from greenpick.services import serving_service

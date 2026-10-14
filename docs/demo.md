@@ -165,4 +165,5 @@ part of the product, not a footnote.
 | `data_locality_egress_check` | Does moving compute away from data backfire via egress? |
 | `estimate_training_carbon` | GPU training carbon + greener where & when (Scenario 1). |
 | `serving_pattern_advice` | Serve users from one region or several? Weighted latency + carbon, with the multi-region egress & residency catches. |
+| `carbon_metric_scaffold` | Emits paste-in code so your app reports its own *estimated* carbon over time (proxies × GreenPick's model × live grid). Self-tracking, directional, not a meter. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick won't claim. |

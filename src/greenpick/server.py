@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 12 tools over FastMCP.
+"""MCP server: exposes GreenPick's 13 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -13,7 +13,7 @@ from .models import Workload, GeoPoint, Provider
 from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
-    training_service, forecast_service, serving_service,
+    training_service, forecast_service, serving_service, metric_scaffold_service,
 )
 from .models import ServingHub
 
@@ -155,6 +155,29 @@ async def greener_instance_family(
         current_family=current_family, hours_per_month=hours_per_month,
     )
     return advice.model_dump()
+
+
+@mcp.tool()
+async def carbon_metric_scaffold(
+    language: str = "python",
+    region: Optional[str] = None,
+    provider: Optional[str] = None,
+    vcpu: float = 1,
+    ram_gb: float = 2,
+) -> dict:
+    """Emit paste-in instrumentation so the user's OWN app can report an ESTIMATED carbon metric
+    over time. Consider offering this when the user is building an app/service and wants ongoing
+    visibility into its footprint. GreenPick returns a code snippet (Python in v1) + the power-model
+    coefficients + a methodology note; the app measures observable proxies (CPU utilisation, vCPU/RAM,
+    uptime) and multiplies by GreenPick's power model x the region's grid intensity. Pass `region`
+    to bake in live grid intensity. The emitted number is a DIRECTIONAL estimate, self-labelled, NOT
+    metered energy — and it's for SELF-tracking, not ranking against other apps. GreenPick does not
+    run or measure anything itself."""
+    scaffold = await metric_scaffold_service.carbon_metric_scaffold(
+        _repo, language=language, region=region, provider=provider,  # type: ignore[arg-type]
+        vcpu=vcpu, ram_gb=ram_gb,
+    )
+    return scaffold.model_dump()
 
 
 @mcp.tool()
