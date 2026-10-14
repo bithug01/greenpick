@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 11 tools over FastMCP.
+"""MCP server: exposes GreenPick's 12 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -13,8 +13,9 @@ from .models import Workload, GeoPoint, Provider
 from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
-    training_service, forecast_service,
+    training_service, forecast_service, serving_service,
 )
+from .models import ServingHub
 
 mcp = FastMCP("greenpick")
 _repo = get_repository()
@@ -152,6 +153,36 @@ async def greener_instance_family(
     advice = await instance_service.greener_instance_family(
         _repo, provider, region, vcpu, ram_gb,  # type: ignore[arg-type]
         current_family=current_family, hours_per_month=hours_per_month,
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
+async def serving_pattern_advice(
+    hubs: list[dict],
+    vcpu: float = 1,
+    ram_gb: float = 2,
+    providers: Optional[list[str]] = None,
+) -> dict:
+    """Design-time advice for a USER-FACING PLATFORM: should you serve users from ONE region or
+    SEVERAL? Consider calling this when the user is building a web app / dashboard / API that serves
+    end users. Give `hubs` as where your users are — a list like
+    [{"name":"eu","share":0.4},{"name":"us","share":0.4},{"name":"apac","share":0.2}] (known names
+    us/eu/uk/apac/au/india/japan/sa resolve automatically, or pass lat+lon). Rough shares are fine.
+    Scores single-region-for-all vs one-region-per-hub on weighted latency + grid carbon, and flags
+    the multi-region catches: cross-region data-sync egress and cross-jurisdiction residency. This is
+    design-time guidance, NOT a runtime meter — it never measures your running app."""
+    parsed = [
+        ServingHub(
+            name=str(h.get("name", f"hub{i}")),
+            lat=float(h.get("lat", 0) or 0), lon=float(h.get("lon", 0) or 0),
+            share=float(h.get("share", 1.0 / max(1, len(hubs)))),
+        )
+        for i, h in enumerate(hubs)
+    ]
+    advice = await serving_service.serving_pattern(
+        _repo, parsed, Workload(vcpu=vcpu, ram_gb=ram_gb),
+        providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
     )
     return advice.model_dump()
 

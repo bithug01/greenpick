@@ -117,6 +117,13 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
   - **Data-spike first** (like forecasting): published Wh-per-1k-tokens / Wh-per-query estimates vary by >1 order of magnitude and vendors don't disclose serving hardware/batching. Confirm a defensible size-class energy table (cited, directional) BEFORE building. If the data won't support even directional per-class figures, don't ship it.
   - **Why NOT a comparative "greenness score" of named models (Claude vs GPT vs Llama):** built on numbers vendors won't confirm, stale every model release, and drifts toward disclosure/marketing — the same line we hold against the free-tier comparator and the CFE axis. See anti-questions.
 
+### Serving pattern (where to serve users from)
+- ✅ "My users are spread across EU/US/APAC — should I serve from one region or several?" — SHIPPED as `serving_pattern_advice` (verified live: concentrated-US → single region; EU/US/APAC spread → multi-region, 171ms→66ms, data-sync egress note fired): a DESIGN-TIME multi-region / single-region advisor. Takes a user-geography distribution (rough buckets ok) + workload, scores single-region-per-hub vs one-region-for-all on carbon + latency, and composes the egress (cross-region data-sync) + residency (cross-jurisdiction) flags we already built.
+  - **In lane:** design-time, directional, stateless, reuses carbon/latency/egress/residency. NOT a runtime meter.
+  - **NOT a runtime CPU/power meter.** We refuse to tell users to embed a live power meter and report back — that's runtime instrumentation GreenPick can't perform or verify, drifts into monitoring/disclosure, and CPU-util ≠ watts without a model. Point such users to real observability/carbon-measurement tools (same as ESG → audited vendors). See anti-questions.
+  - **Trigger via description, not file-scanning:** an MCP server can't see the user's codebase; the host agent can. So the tool DESCRIPTION invites the agent to offer it when the user is building a user-facing platform/service. Context-aware nudge, model-mediated.
+  - **Caveat:** user-geography is a soft, often-unknown-at-design-time input → accept rough % buckets, label directional loudly.
+
 ### Data & storage
 - 🔭 "Where should I put this 5TB bucket to minimize carbon + egress to my users?" — storage-placement counterpart to compute placement; ties into the egress tool.
 - 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.
@@ -164,6 +171,7 @@ GreenPick honest.
 - ❌ "Act as a live scheduler / actually move my workload." — design-time advice, not an orchestrator.
 - ❌ "Give me a greenness leaderboard / letter-grade of named commercial LLMs (Claude vs GPT vs Llama)." — built on per-token energy and serving-hardware figures vendors don't disclose, stale every release, drifts into disclosure/marketing. We'll ESTIMATE per-inference carbon by model SIZE CLASS (esp. self-hosted), but not grade named products. Same discipline as the free-tier comparator and CFE axis.
 - ❌ "Is it legally compliant to run this in region X? / Is this GDPR-ok?" — GreenPick determines NO legal compliance. It flags cross-jurisdiction moves (esp. leaving the EEA) as a geographic heads-up with a hard "confirm with your own governance" disclaimer, and encodes NO adequacy status (that rots). Residency is a flag, never a verdict.
+- ❌ "Embed a live CPU/power meter in my app and report its carbon." — runtime instrumentation GreenPick can't perform or verify from an MCP server; CPU-util ≠ watts without a model; drifts into monitoring/disclosure. GreenPick is design-time. Point to real observability / carbon-measurement tooling. (serving_pattern_advice gives the design-time version — where to serve from — not a runtime meter.)
 
 ---
 

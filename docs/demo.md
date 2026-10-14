@@ -164,4 +164,5 @@ part of the product, not a footnote.
 | `greener_instance_family` | Greener same-size family (perf-per-watt; ARM/Graviton wins). |
 | `data_locality_egress_check` | Does moving compute away from data backfire via egress? |
 | `estimate_training_carbon` | GPU training carbon + greener where & when (Scenario 1). |
+| `serving_pattern_advice` | Serve users from one region or several? Weighted latency + carbon, with the multi-region egress & residency catches. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick won't claim. |

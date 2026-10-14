@@ -181,6 +181,50 @@ class TrainingCarbonAdvice(BaseModel):
     limitations: str = ""
 
 
+class ServingHub(BaseModel):
+    """One cluster of users, as a share of total traffic, located at a point."""
+    name: str                                   # e.g. "eu", "us", "apac", or a city
+    lat: float
+    lon: float
+    share: float = Field(gt=0, le=1)            # fraction of users here (shares sum ~1)
+
+
+class ServingSinglePlan(BaseModel):
+    """Serve ALL users from one region."""
+    provider: Provider
+    region: str
+    weighted_latency_ms: float                  # traffic-weighted latency across hubs
+    carbon_g_co2_per_kwh: float
+    carbon_source: str
+    carbon_quality: str
+
+
+class ServingPerHubChoice(BaseModel):
+    """The region chosen to serve one hub, in a multi-region plan."""
+    hub: str
+    provider: Provider
+    region: str
+    latency_ms: float
+    carbon_g_co2_per_kwh: float
+
+
+class ServingPatternAdvice(BaseModel):
+    """Design-time 'where should I serve my users from?' — single-region vs multi-region.
+
+    Directional. Reuses carbon + latency, and composes the egress (cross-region data sync) and
+    residency (cross-jurisdiction) caveats. NOT a runtime meter; NOT a verdict on legality."""
+    hubs: list[ServingHub]
+    single_region: Optional[ServingSinglePlan] = None       # best one-region-for-all option
+    multi_region: list[ServingPerHubChoice] = []            # one region per hub (nearest+greener)
+    multi_region_weighted_latency_ms: Optional[float] = None
+    multi_region_blended_carbon_g_co2_per_kwh: Optional[float] = None
+    recommended_pattern: str = ""                           # "single_region" | "multi_region"
+    data_sync_egress_note: Optional[str] = None             # multi-region implies shared-state sync
+    residency_note: Optional[str] = None                    # if any chosen region crosses a hub's jurisdiction
+    rationale: str = ""
+    limitations: str = ""
+
+
 class DataLocalityWarning(BaseModel):
     """Whether running compute away from where the data lives will cost you in egress.
 
