@@ -96,6 +96,29 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
 
 ## New — the seeds of future tools
 
+> ### Value ranking (when it's time to BUILD — but validate with users first)
+> Nothing below beats the "START HERE" plan (demo → GitHub → user conversations); every item is a bet
+> on an untested assumption. Scored on: changes a decision? · data gettable & honest? · cheap to build
+> on what exists? · stays in-lane? Items are grouped by theme below; this is the priority across them.
+>
+> **Tier 1 — high value, low regret**
+> 1. `estimate_inference_carbon` (LLM inference by size class) — timely, reuses the GPU/grid machinery; spike the per-class energy table first; self-hosted/size-class, NOT a named-model leaderboard.
+> 2. PR-justification formatter — formats an existing recommendation as prose; no new data/math; gets GreenPick into the team workflow (PR/decision record). Cheapest value on the board.
+> 3. `data_profile` modifier — a lens that makes egress/serving/training realistic per workload; cheap (defaults + caveat re-ordering); surfaces the media/CDN gap.
+>
+> **Tier 2 — real value, more work / softer payoff**
+> 4. "Batch across the cleanest hours" (a scheduling PLAN) — best pure-scheduling extension; composes on the forecast curve.
+> 5. Utilization-aware estimate (spiky/idle/serverless) — makes the carbon estimate honest for bursty apps; correctness upgrade more than a wow.
+> 6. Migration payoff ("move the data too, over 12 months?") — sharp follow-on to the egress tool; decisive for a smaller slice.
+>
+> **Tier 3 — nice, lower leverage / harder**
+> 7. Sub-regional / AZ carbon (depth on our lead axis). 8. Aggregate savings roll-up (presentation layer; edges toward disclosure). 9. Container vs VM vs serverless (needs opaque platform-overhead data — spike first). 10. Storage placement (overlaps egress/serving).
+>
+> **Tier 4 — park / resist**
+> 11. CDN/edge carbon — high value but a research problem (poor multi-location data); may graduate from the `data_profile` media insight, needs its own spike. 12. Per-vendor CFE / renewable-matching — the highest-rot, marketing-adjacent CFE trap; park unless the data situation changes.
+>
+> **One-line directive:** build #2 (PR formatter) first as a quick adoption win, then #1 (LLM inference) as the flagship. Let a user asking for anything else be the signal it's worth building.
+
 ### Scheduling / time
 - ✅ "What's the carbon forecast for a region over the next 24h?" — SHIPPED as `carbon_forecast` (ENTSO-E A69 renewable-curve ranking, EU true-forecast + share where load exists; US degrades to historical). Verified live: SE 69% renewable-share peak, IE wind-MW peak, us-west-2 historical fallback. **Spike findings below.**
 
