@@ -10,6 +10,17 @@ dist/
 
 # Local config / secrets
 .env
+*.env
+# Stray credential/key files (e.g. a pasted API key saved as a .txt). Belt-and-suspenders:
+# secrets belong in .env, not loose files — these patterns stop an accidental commit.
+*api*.txt
+*apikey*
+*api-key*
+*api_key*
+*secret*
+*token*.txt
+*credentials*
+electricity maps api.txt
 
 # Editor / OS
 .vscode/
