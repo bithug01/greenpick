@@ -4,9 +4,16 @@ A **design-time sustainability co-pilot** that runs as an MCP server inside your
 environment (Cursor / Claude Code / Kiro). When you're deciding **where to deploy**, it gives a
 greener region choice with an honest **carbon + cost + latency** tradeoff — in-editor, in seconds.
 
-> **Status: working.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost parity
-> (Vantage-refreshed), per-axis R/Y/G ratings, and carbon-aware scheduling — all shipped. Falls
-> back to clearly-labelled mock data offline or without API keys.
+> **Status: working — 14 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
+> parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
+> GPU-training placement, right-sizing, serving-pattern and data-locality/residency checks — all
+> shipped. Falls back to clearly-labelled mock data offline or without API keys.
+
+![Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)](docs/img/region-carbon-30x.svg)
+
+*The same 40-GPU-hour training run emits ~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney — a ~30×
+difference from region choice alone. GreenPick surfaces that (with the cost and latency tradeoff)
+at the moment you choose.*
 
 ## Why this exists
 
@@ -26,19 +33,21 @@ eyes open.
 
 ## Scope
 
-- One workload shape: a **long-running web/API service** deployed to a cloud region.
 - Providers: **AWS, GCP, Azure** regions.
-- Carbon = **grid carbon intensity by region** (directional, point-in-time; live US + EU).
+- Workloads: long-running **web/API services**, **GPU training** runs, and **deferrable jobs**
+  (ETL / batch / backups) — placement and timing for each.
+- Carbon = **grid carbon intensity by region** (directional, point-in-time; live US + EU), plus a
+  **day-ahead forecast** (EU) for forward-looking scheduling.
 - Cost = **compute + egress ballpark** (deterministic static table, apples-to-apples across
   clouds; never LLM-invented).
 - Latency = **geographic estimate** to a stated user location.
-- **Carbon-aware scheduling** = cleanest recent hours to run a deferrable job.
-- **Greener instance family** = same-size, same-region family that does the work on less energy.
-- **Data-locality / egress check** = warns when moving compute away from your data backfires.
-- **GPU training carbon** = energy + CO₂ of a training run, with greener region + cleanest-hours timing.
-- **Free data only.** No forecasting, no flow-traced consumption accounting.
+- Efficiency levers: **greener instance family** (perf-per-watt), **right-sizing** (cost + carbon
+  together), and a **carbon-metric scaffold** to track your app over time.
+- Guardrails: **data-locality / egress** backfire checks and **cross-jurisdiction residency** flags.
+- **Free data only.** No flow-traced consumption accounting; carbon forecast is relative, not absolute.
 
-Roadmap: forecasting (reactive → planned scheduling), sub-national grid zones, CI/CD integration.
+Roadmap: LLM-inference carbon, data-format/engine efficiency advice, sub-national grid zones,
+CI/CD integration. See `docs/user-questions-backlog.md`.
 
 ## MCP tools
 
