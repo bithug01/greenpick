@@ -95,9 +95,18 @@ rightsizing_check, explain_methodology_and_limits._
 
 ---
 
-## New — the seeds of future tools
+## Ideas by theme (shipped + still-to-build, mixed together on purpose)
 
-> ### Value ranking (when it's time to BUILD — but validate with users first)
+> **How to read the icons** (this section mixes done and not-done, grouped by theme so related
+> ideas stay together):
+> - ✅ = **already built and shipped** — a live tool. NOT a to-do. Kept here with its "verified X"
+>   note so the history of each theme is visible.
+> - 🔭 = **not built yet** — a genuine future idea. **These are the only to-build items.**
+> - 🟡 = partially built.
+>
+> **So the actual to-build list = the 🔭 items only.** The ✅ ones are context, not work.
+
+> ### Value ranking of the 🔭 items (when it's time to BUILD — but validate with users first)
 > Nothing below beats the "START HERE" plan (demo → GitHub → user conversations); every item is a bet
 > on an untested assumption. Scored on: changes a decision? · data gettable & honest? · cheap to build
 > on what exists? · stays in-lane? Items are grouped by theme below; this is the priority across them.
