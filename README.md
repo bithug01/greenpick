@@ -97,4 +97,4 @@ Connect it to an MCP client (e.g. Kiro / Claude Code / Cursor) by pointing the c
 
 ## License
 
-TBD (intended open-source).
+MIT — see [LICENSE](LICENSE). © 2026 Perry Beaumont.
