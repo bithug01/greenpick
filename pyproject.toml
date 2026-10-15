@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Design-time sustainability co-pilot (MCP server): greener cloud-region choices with carbon + cost + latency tradeoffs."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "TBD" }
+license = { text = "MIT" }
 dependencies = [
     "mcp>=1.2",          # Model Context Protocol SDK (FastMCP lives here)
     "pydantic>=2.0",
