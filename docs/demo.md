@@ -172,4 +172,5 @@ part of the product, not a footnote.
 | `estimate_training_carbon` | GPU training carbon + greener where & when (Scenario 1). |
 | `serving_pattern_advice` | Serve users from one region or several? Weighted latency + carbon, with the multi-region egress & residency catches. |
 | `carbon_metric_scaffold` | Emits paste-in code so your app reports its own *estimated* carbon over time (proxies × GreenPick's model × live grid). Self-tracking, directional, not a meter. |
+| `rightsizing_check` | Over-provisioned? Right-size to cut cost *and* carbon together — the FinOps #1 win with a carbon twin. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick won't claim. |

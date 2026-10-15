@@ -161,6 +161,25 @@ data_locality_egress_check, estimate_training_carbon, explain_methodology_and_li
   - **Lens, NOT a detector or a verdict.** GreenPick can't see the user's data; the user/agent supplies the profile (model-mediated, like everything else). **No per-type carbon NUMBERS** (e.g. "video = X gCO₂/GB") — made-up coefficients. Volume defaults are rough → loud "override me" labels, like the user-geography input. Strictly optional so simple cases stay simple.
   - **Flagged future gap it surfaces:** media/video is egress-DOMINANT (served out repeatedly), so "where you SERVE from + CDN/edge" matters far more than "where you compute" — our serving_pattern tool reasons about origin regions, not edge caching. **Media/CDN-aware serving** may deserve its own future tool; data type is what reveals the blind spot.
 
+### FinOps patterns to borrow (efficiency half only)
+FinOps splits into **efficiency** (do less work / waste less — cost AND carbon fall together) and
+**financial engineering** (pay less for the same work — zero carbon signal). GreenPick borrows the
+PATTERNS from the efficiency half (design-time, directional, no billing-account access); it does NOT
+touch the financial-engineering half or anything needing the actual bill. Carbon rides the OpEx motive.
+
+- ✅ **`rightsizing_check` — SHIPPED.** The #1 FinOps finding (over-provisioning), pure dual-benefit. Takes provisioned vcpu/ram + observed utilisation → right-sized target (keeps ~40% headroom) with monthly $ AND kg CO2 saving; only flags if saving ≥10%. Reuses power + cost coefficients; user supplies utilisation (no billing access). Verified live: 8 vCPU @15% → 1.7 vCPU, ~$216/mo + ~8 kg CO2/mo (54%). +3 tests (60 passing).
+- 🔭 **Non-prod / idle scheduling** — "this doesn't need to run 24/7." Deferrable-EXISTENCE (vs our deferrable-timing): running 60h/week not 168 cuts ~64% of cost + carbon. Cheap extension to the carbon estimate.
+- 🔭 **Scale-to-zero / autoscaling framing** — same lever as the backlogged utilisation-aware estimate, carbon lens on idle watts you pay + emit for. Reinforces building that item.
+- 🔭 **Storage tiering** — borrow the "tier by access frequency" idea (hot→cold→archive) into storage-placement; modest carbon angle.
+- 🔭 **FinOps reporting idioms** — steal the presentation patterns ("est. monthly savings", "pays back in N months", "waste as % of spend") for the PR-formatter + aggregate-savings items. Lead with the $ figure, carbon as the twin.
+
+**OUT OF LANE — do NOT borrow (no carbon signal and/or needs billing-account data):**
+- ❌ Commitment discounts (reserved instances / savings plans / committed-use) — financial engineering, SAME energy, cheaper contract. Zero carbon dual-benefit; needs account/pricing specifics.
+- ❌ Spot / preemptible — carbon-neutral (same hardware), and it's runtime/orchestration not design-time. (Only curiosity: spot capacity *may* correlate with low-demand/clean-grid windows — speculative, data-thin.)
+- ❌ Billing-data features (anomaly detection, tag/cost allocation, commitment-coverage) — these ARE the FinOps platforms (Vantage/CloudHealth/Cloudability); require billing access we don't and shouldn't have. Competing there drags us out of the design-time lane.
+
+> **The dividing line:** borrow EFFICIENCY (cost & carbon are the same lever), ignore FINANCIAL ENGINEERING (no carbon signal, needs the bill).
+
 ### Graphics / visuals (for demo + README)
 - ✅ Four SVGs in `docs/img/`: region-carbon-30x (hero — same H100 run, 30× between Stockholm/Sydney), cleanest-hours-us-west-2 (24h curve, ~57% overnight), egress-by-tier (the $270→$30-60/$255-360 correction), decision-flow (where→check→when). Real data, self-labelled directional. Hero + curve embedded in demo.md.
 - 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.

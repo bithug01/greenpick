@@ -421,6 +421,50 @@ async def test_training_unknown_gpu_is_handled():
     assert "unknown gpu" in adv.rationale.lower()
 
 
+# --- Right-sizing (FinOps dual-benefit) ---
+
+from greenpick.services import rightsizing_service
+
+
+@pytest.mark.asyncio
+async def test_rightsizing_flags_oversized_and_saves_both():
+    repo = MockCarbonRepository()
+    # 8 vCPU / 32 GB at 15% CPU use -> clearly over-provisioned.
+    adv = await rightsizing_service.rightsizing_check(
+        repo, "aws", "us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15,
+    )
+    assert adv.is_oversized
+    assert adv.recommended_vcpu < 8                       # shrinks
+    assert adv.recommended_vcpu >= 0.5                    # but not below the floor
+    assert adv.monthly_kg_co2_saving > 0
+    assert adv.monthly_usd_saving is not None and adv.monthly_usd_saving > 0
+    assert adv.saving_pct is not None and adv.saving_pct >= 10
+    assert "over-provisioned" in adv.rationale.lower()
+
+
+@pytest.mark.asyncio
+async def test_rightsizing_leaves_well_sized_alone():
+    repo = MockCarbonRepository()
+    # 2 vCPU at 80% use -> headroom already sensible, no material saving.
+    adv = await rightsizing_service.rightsizing_check(
+        repo, "aws", "us-east-1", vcpu=2, ram_gb=4, cpu_utilization=0.8,
+    )
+    assert adv.is_oversized is False
+    assert "reasonably sized" in adv.rationale.lower() or "sensible headroom" in adv.rationale.lower()
+
+
+@pytest.mark.asyncio
+async def test_rightsizing_never_upsizes_and_keeps_headroom():
+    repo = MockCarbonRepository()
+    adv = await rightsizing_service.rightsizing_check(
+        repo, "aws", "us-east-1", vcpu=4, ram_gb=8, cpu_utilization=0.5,
+    )
+    # Right-sizing only shrinks (or holds), never grows.
+    assert adv.recommended_vcpu <= 4
+    # 50% use x 1.4 headroom = 70% of provisioned -> ~2.8 vCPU, above raw usage (keeps headroom).
+    assert adv.recommended_vcpu > 4 * 0.5
+
+
 # --- Carbon metric scaffold (emit instrumentation code) ---
 
 from greenpick.services import metric_scaffold_service

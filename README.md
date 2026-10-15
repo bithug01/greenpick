@@ -55,6 +55,7 @@ Roadmap: forecasting (reactive → planned scheduling), sub-national grid zones,
 | `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
 | `serving_pattern_advice` | For a user-facing platform: serve from one region or several? Traffic-weighted latency + carbon, with the multi-region data-sync egress and cross-jurisdiction residency catches. |
 | `carbon_metric_scaffold` | Emits paste-in instrumentation (Python) so your app reports its own **estimated** carbon over time — observable proxies × GreenPick's power model × live grid. Self-tracking, directional, self-labelled; not a runtime meter. |
+| `rightsizing_check` | Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller size cuts **both** cost and carbon. Give provisioned size + observed utilisation → the right-sized target with monthly $ and kg CO₂ saving. |
 | `estimate_training_carbon` | Carbon of a GPU training run (TDP-based energy × live grid), with greener **where** (region ranking) + **when** (cleanest hours) — the two levers that compound for portable, deferrable training. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick explicitly does **not** claim. |
 

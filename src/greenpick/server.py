@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 13 tools over FastMCP.
+"""MCP server: exposes GreenPick's 14 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -14,6 +14,7 @@ from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
     training_service, forecast_service, serving_service, metric_scaffold_service,
+    rightsizing_service,
 )
 from .models import ServingHub
 
@@ -153,6 +154,29 @@ async def greener_instance_family(
     advice = await instance_service.greener_instance_family(
         _repo, provider, region, vcpu, ram_gb,  # type: ignore[arg-type]
         current_family=current_family, hours_per_month=hours_per_month,
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
+async def rightsizing_check(
+    provider: str,
+    region: str,
+    vcpu: float,
+    ram_gb: float,
+    cpu_utilization: float,
+    ram_utilization: Optional[float] = None,
+    hours_per_month: float = 730,
+) -> dict:
+    """Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller
+    size cuts BOTH cost and carbon — same work, less waste, no tradeoff. Give the provisioned size
+    (vcpu, ram_gb) and observed CPU utilisation (0..1, e.g. 0.2 for 20%); optionally RAM utilisation.
+    Returns the right-sized target (keeps ~40% headroom) with the monthly $ AND kg CO2 saving. Lead
+    with the cost number, carbon is the twin. Directional, design-time — uses the utilisation you
+    report, not a reading of your fleet."""
+    advice = await rightsizing_service.rightsizing_check(
+        _repo, provider, region, vcpu, ram_gb, cpu_utilization,  # type: ignore[arg-type]
+        ram_utilization=ram_utilization, hours_per_month=hours_per_month,
     )
     return advice.model_dump()
 

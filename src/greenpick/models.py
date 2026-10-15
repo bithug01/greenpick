@@ -181,6 +181,31 @@ class TrainingCarbonAdvice(BaseModel):
     limitations: str = ""
 
 
+class RightsizingAdvice(BaseModel):
+    """FinOps right-sizing with a carbon twin: if you're over-provisioned, a smaller size cuts
+    BOTH cost and carbon. The clearest efficiency dual-benefit. Directional."""
+    provider: Provider
+    region: str
+    provisioned_vcpu: float
+    provisioned_ram_gb: float
+    observed_cpu_utilization: float               # 0..1, peak/typical the user reports
+    observed_ram_utilization: Optional[float] = None
+    recommended_vcpu: float = 0
+    recommended_ram_gb: float = 0
+    is_oversized: bool = False
+    cost_now_usd_per_month: Optional[float] = None
+    cost_rightsized_usd_per_month: Optional[float] = None
+    monthly_usd_saving: Optional[float] = None
+    carbon_now_kg_per_month: Optional[float] = None
+    carbon_rightsized_kg_per_month: Optional[float] = None
+    monthly_kg_co2_saving: Optional[float] = None
+    saving_pct: Optional[float] = None
+    carbon_source: Optional[str] = None
+    carbon_quality: Optional[str] = None
+    rationale: str = ""
+    limitations: str = ""
+
+
 class CarbonMetricScaffold(BaseModel):
     """Paste-in instrumentation so an app can emit its OWN estimated carbon metric.
 
