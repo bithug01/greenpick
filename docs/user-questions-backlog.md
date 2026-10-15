@@ -63,9 +63,10 @@ Legend for **Status**:
 - 🟡 **Partial** — a current tool gets close but misses part of it.
 - 🔭 **New** — would need a new tool or data source.
 
-_As of 2026-10-12. 11 tools: compare_regions_tri_axis, greener_alternative_to, estimate_workload_carbon,
+_As of 2026-10-12. 14 tools: compare_regions_tri_axis, greener_alternative_to, estimate_workload_carbon,
 region_carbon_now, cleanest_hours_to_run, cleanest_time_of_day, carbon_forecast, greener_instance_family,
-data_locality_egress_check, estimate_training_carbon, explain_methodology_and_limits._
+data_locality_egress_check, estimate_training_carbon, serving_pattern_advice, carbon_metric_scaffold,
+rightsizing_check, explain_methodology_and_limits._
 
 ---
 
