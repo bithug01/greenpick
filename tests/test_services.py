@@ -421,6 +421,63 @@ async def test_training_unknown_gpu_is_handled():
     assert "unknown gpu" in adv.rationale.lower()
 
 
+# --- LLM inference carbon ---
+
+from greenpick.services import inference_service
+
+
+@pytest.mark.asyncio
+async def test_inference_scales_with_requests_and_tokens():
+    repo = MockCarbonRepository()
+    base = await inference_service.estimate_inference_carbon(repo, "small", 1_000_000, avg_output_tokens=300)
+    more_req = await inference_service.estimate_inference_carbon(repo, "small", 2_000_000, avg_output_tokens=300)
+    more_tok = await inference_service.estimate_inference_carbon(repo, "small", 1_000_000, avg_output_tokens=600)
+    assert more_req.monthly_kwh_high > base.monthly_kwh_high      # 2x requests -> more energy
+    assert more_tok.monthly_kwh_high > base.monthly_kwh_high      # 2x output tokens -> more energy
+    # low <= high band always holds
+    assert base.monthly_kwh_low <= base.monthly_kwh_high
+
+
+@pytest.mark.asyncio
+async def test_inference_bigger_class_uses_more_energy():
+    repo = MockCarbonRepository()
+    small = await inference_service.estimate_inference_carbon(repo, "small", 1_000_000)
+    frontier = await inference_service.estimate_inference_carbon(repo, "frontier_dense", 1_000_000)
+    # Size class is the big lever — frontier dense >> small for the same workload.
+    assert frontier.monthly_kwh_high > small.monthly_kwh_high * 5
+
+
+@pytest.mark.asyncio
+async def test_inference_param_alias_and_moe_resolve():
+    repo = MockCarbonRepository()
+    a = await inference_service.estimate_inference_carbon(repo, "8b", 100_000)
+    assert a.size_class == "small"                 # '8b' alias -> small
+    moe = await inference_service.estimate_inference_carbon(repo, "moe", 100_000)
+    assert moe.size_class == "moe_frontier"        # 'moe' alias
+    # MoE runs near active params -> cheaper than frontier DENSE at the high end.
+    dense = await inference_service.estimate_inference_carbon(repo, "frontier_dense", 100_000)
+    assert moe.monthly_kwh_high < dense.monthly_kwh_high
+
+
+@pytest.mark.asyncio
+async def test_inference_adds_carbon_for_region():
+    repo = MockCarbonRepository()
+    adv = await inference_service.estimate_inference_carbon(
+        repo, "large", 1_000_000, avg_output_tokens=300, region="us-east-1",
+    )
+    assert adv.grid_intensity_g_co2_per_kwh is not None
+    assert adv.monthly_kg_co2_low is not None and adv.monthly_kg_co2_high is not None
+    assert adv.monthly_kg_co2_low <= adv.monthly_kg_co2_high
+
+
+@pytest.mark.asyncio
+async def test_inference_unknown_class_is_handled():
+    repo = MockCarbonRepository()
+    adv = await inference_service.estimate_inference_carbon(repo, "gpt-9", 1000)
+    assert adv.monthly_kwh_high == 0
+    assert "unknown size class" in adv.rationale.lower()
+
+
 # --- Right-sizing (FinOps dual-benefit) ---
 
 from greenpick.services import rightsizing_service

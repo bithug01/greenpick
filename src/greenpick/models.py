@@ -181,6 +181,30 @@ class TrainingCarbonAdvice(BaseModel):
     limitations: str = ""
 
 
+class InferenceCarbonAdvice(BaseModel):
+    """Directional energy + CO2 for an LLM INFERENCE workload, by model size class.
+
+    Estimate, not a measurement. Keyed on size class (not a named product); output tokens drive
+    the cost; reported as a LOW-HIGH band because serving choices move the same model many-fold."""
+    size_class: str                               # canonical class resolved
+    size_class_label: str
+    monthly_requests: float
+    avg_output_tokens: int
+    monthly_output_tokens: float                  # requests x avg_output_tokens
+    wh_per_1k_output_low: float
+    wh_per_1k_output_high: float
+    monthly_kwh_low: float
+    monthly_kwh_high: float
+    region: Optional[str] = None
+    grid_intensity_g_co2_per_kwh: Optional[float] = None
+    carbon_source: Optional[str] = None
+    carbon_quality: Optional[str] = None
+    monthly_kg_co2_low: Optional[float] = None
+    monthly_kg_co2_high: Optional[float] = None
+    rationale: str = ""
+    limitations: str = ""
+
+
 class RightsizingAdvice(BaseModel):
     """FinOps right-sizing with a carbon twin: if you're over-provisioned, a smaller size cuts
     BOTH cost and carbon. The clearest efficiency dual-benefit. Directional."""

@@ -1,0 +1,50 @@
+{
+  "_comment": "Directional energy intensity for LLM INFERENCE, by model SIZE CLASS, in Wh per 1,000 OUTPUT tokens. Output tokens dominate inference energy (generation is the costly part; R^2>0.95 vs output length in measurement studies). These are LOW-HIGH bands, not point values: serving choices (quantisation, batching, request shaping) move energy by up to ~100x for the SAME model, so a single number would be false precision. Keyed on size class, NOT named commercial products (vendors don't disclose serving hardware/batching). Estimate, not a measurement; for self-hosted/open models the band is most trustworthy. Replace with your own measured J/token before any non-directional use.",
+  "_as_of": "2026-10-16",
+  "_unit": "Wh per 1000 output tokens",
+  "_sources": "Directional, synthesised from peer-reviewed inference-energy measurement studies (2024-2026): arXiv 2509.20241 (median 0.34 Wh/query, IQR 0.18-0.67, for >200B models on an H100 node w/ realistic utilisation+PUE); arXiv 2505.09598 (~0.42 Wh short GPT-4o query); arXiv 2407.16893 (70B ~2 orders of magnitude more energy/token than small models; output length predicts energy R^2>0.95); arXiv 2601.22362 (quantisation/batching/shaping => up to ~100x spread, same model). Bands rounded by GreenPick. Assume a ~300-output-token 'typical query' when converting to per-query.",
+  "_notes": {
+    "output_tokens_dominate": "Energy tracks OUTPUT (generated) tokens + response time far more than input tokens. The tool keys on output tokens; if only total tokens are known, assume ~25-40% are output or flag the assumption.",
+    "moe": "Mixture-of-Experts models run near their ACTIVE parameter count, not total — a '~400B MoE' behaves more like a mid/large dense model, NOT like dense-400B. Use the 'moe_frontier' class, not 'frontier_dense', for MoE.",
+    "serving_variance": "quantisation (int8/int4), batching, and request shaping can cut energy many-fold; a naive un-batched fp16 deployment sits near the HIGH end. Hence bands, not points."
+  },
+  "size_classes": {
+    "small": {
+      "label": "small (~1-7B params)",
+      "wh_per_1k_output_tokens_low": 0.15,
+      "wh_per_1k_output_tokens_high": 0.9,
+      "example_models": "Llama-3-8B, Mistral-7B, Phi-3"
+    },
+    "mid": {
+      "label": "mid (~8-34B params)",
+      "wh_per_1k_output_tokens_low": 0.6,
+      "wh_per_1k_output_tokens_high": 3.5,
+      "example_models": "Llama-3-13B, Mixtral-ish dense, Qwen-32B"
+    },
+    "large": {
+      "label": "large (~35-120B dense)",
+      "wh_per_1k_output_tokens_low": 2.5,
+      "wh_per_1k_output_tokens_high": 12.0,
+      "example_models": "Llama-3-70B, dense ~70B"
+    },
+    "frontier_dense": {
+      "label": "frontier dense (>200B)",
+      "wh_per_1k_output_tokens_low": 8.0,
+      "wh_per_1k_output_tokens_high": 30.0,
+      "example_models": "dense >200B (research-scale); ~0.34 Wh median per typical query"
+    },
+    "moe_frontier": {
+      "label": "frontier MoE (large total, smaller active)",
+      "wh_per_1k_output_tokens_low": 3.0,
+      "wh_per_1k_output_tokens_high": 15.0,
+      "example_models": "Mixture-of-Experts frontier models (active params << total)"
+    }
+  },
+  "_aliases": {
+    "1b": "small", "3b": "small", "7b": "small", "8b": "small",
+    "13b": "mid", "14b": "mid", "32b": "mid", "34b": "mid",
+    "70b": "large", "65b": "large",
+    "175b": "frontier_dense", "200b": "frontier_dense", "400b": "frontier_dense",
+    "moe": "moe_frontier", "mixtral": "moe_frontier"
+  }
+}

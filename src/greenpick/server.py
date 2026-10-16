@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 14 tools over FastMCP.
+"""MCP server: exposes GreenPick's 15 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -14,7 +14,7 @@ from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
     training_service, forecast_service, serving_service, metric_scaffold_service,
-    rightsizing_service,
+    rightsizing_service, inference_service,
 )
 from .models import ServingHub
 
@@ -154,6 +154,28 @@ async def greener_instance_family(
     advice = await instance_service.greener_instance_family(
         _repo, provider, region, vcpu, ram_gb,  # type: ignore[arg-type]
         current_family=current_family, hours_per_month=hours_per_month,
+    )
+    return advice.model_dump()
+
+
+@mcp.tool()
+async def estimate_inference_carbon(
+    size_class: str,
+    monthly_requests: float,
+    avg_output_tokens: int = 300,
+    region: Optional[str] = None,
+    provider: Optional[str] = None,
+) -> dict:
+    """Energy + CO2 of running an LLM INFERENCE workload (serving queries) — the inference-side
+    sibling of estimate_training_carbon. Give the model SIZE CLASS (small | mid | large |
+    frontier_dense | moe, or a param alias like '8b' / '70b' / 'moe'), monthly request volume, and
+    avg OUTPUT tokens per request (output drives inference energy). Pass `region` to add CO2 at live
+    grid intensity. Returns a LOW-HIGH kWh/CO2 band (wide on purpose — serving choices move the same
+    model many-fold). Directional, most trustworthy for self-hosted/open models; keyed on size class,
+    NOT a named-model leaderboard. Smaller size class is the biggest lever."""
+    advice = await inference_service.estimate_inference_carbon(
+        _repo, size_class, monthly_requests, avg_output_tokens=avg_output_tokens,  # type: ignore[arg-type]
+        region=region, provider=provider,  # type: ignore[arg-type]
     )
     return advice.model_dump()
 
@@ -319,6 +341,7 @@ def explain_methodology_and_limits() -> dict:
         "instance_family": "Greener-family suggestion uses DIRECTIONAL perf-per-watt multipliers by generation/arch (ARM/Graviton-class = biggest win), not a benchmark of your workload.",
         "data_locality": "Egress check leads with a DIRECTIONAL cost ballpark (flat per-GB, ignores free tiers/tiered pricing); transfer carbon uses a single kWh/GB coefficient whose published estimates span orders of magnitude — order-of-magnitude only.",
         "training": "Training carbon uses published GPU TDP (peak, not your run's measured draw) x a utilization assumption + host overhead x PUE, then x the region's grid intensity. GPU availability per region is NOT checked. Ignores spot/on-demand, checkpointing, multi-node networking.",
+        "inference": "LLM inference carbon is keyed on model SIZE CLASS (not a named product) with a wide LOW-HIGH band (quantisation/batching/serving move the same model many-fold); output tokens drive it. Directional, most trustworthy for self-hosted/open models; NOT a named-model leaderboard.",
         "forecast": "Day-ahead forecast is RELATIVE: upcoming hours ranked by forecast wind+solar output (ENTSO-E A69), not an absolute gCO2/kWh forecast. EU only; US/uncovered zones degrade to the recent historical pattern (labelled 'historical').",
         "data_residency": "GreenPick flags when a recommended move CROSSES a jurisdiction (esp. leaving the EEA) as a geographic heads-up only. It does NOT assess legal/GDPR compliance, does not encode adequacy decisions, and is not legal advice — confirm with your own data governance.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",

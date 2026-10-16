@@ -66,6 +66,7 @@ CI/CD integration. See `docs/user-questions-backlog.md`.
 | `carbon_metric_scaffold` | Emits paste-in instrumentation (Python) so your app reports its own **estimated** carbon over time — observable proxies × GreenPick's power model × live grid. Self-tracking, directional, self-labelled; not a runtime meter. |
 | `rightsizing_check` | Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller size cuts **both** cost and carbon. Give provisioned size + observed utilisation → the right-sized target with monthly $ and kg CO₂ saving. |
 | `estimate_training_carbon` | Carbon of a GPU training run (TDP-based energy × live grid), with greener **where** (region ranking) + **when** (cleanest hours) — the two levers that compound for portable, deferrable training. |
+| `estimate_inference_carbon` | Energy + CO₂ of an LLM **inference** workload, by model size class × output tokens × requests (× live grid). A low–high band; smaller size class is the big lever. Directional, self-hosted-friendly; not a named-model leaderboard. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick explicitly does **not** claim. |
 
 ## Data sources (free; swappable behind one interface)

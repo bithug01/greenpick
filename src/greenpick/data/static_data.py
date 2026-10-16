@@ -45,6 +45,28 @@ def network_model() -> dict:
 
 
 @lru_cache(maxsize=1)
+def inference_energy() -> dict:
+    """Directional LLM inference energy (Wh/1k output tokens) by model size class."""
+    return json.loads((_DATA_DIR / "inference_energy.json").read_text(encoding="utf-8"))
+
+
+def resolve_size_class(name: str) -> tuple[str, dict] | None:
+    """Resolve a size-class name or param-count alias (e.g. 'small', '8b', '70B', 'moe',
+    'mixtral') -> (canonical_class, spec), case-insensitive. None if unknown."""
+    if not name:
+        return None
+    data = inference_energy()
+    key = name.strip().lower()
+    classes = data.get("size_classes", {})
+    if key in classes:
+        return key, classes[key]
+    alias = data.get("_aliases", {}).get(key)
+    if alias and alias in classes:
+        return alias, classes[alias]
+    return None
+
+
+@lru_cache(maxsize=1)
 def gpu_power() -> dict:
     """Directional GPU/accelerator power model (TDP + utilization + host overhead) for training."""
     return json.loads((_DATA_DIR / "gpu_power.json").read_text(encoding="utf-8"))
