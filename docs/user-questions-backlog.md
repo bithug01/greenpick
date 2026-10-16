@@ -243,6 +243,10 @@ touch the financial-engineering half or anything needing the actual bill. Carbon
 ### Reporting / decision-capture (lower priority — drifts toward disclosure, which we said we're NOT)
 - 🔭 "Give me a one-paragraph justification for choosing this region, for my PR description." — formats an existing recommendation as prose. Cheap, high-charm, no new data.
 - 🔭 "What would I save (carbon + $) by making all these changes?" — aggregate across several recommendations.
+- 🔭 **Sources & verification** — surface the AUTHORITATIVE primary source for each number GreenPick states ("~$0.01-0.02/GB cross-region; confirm at <AWS Data Transfer pricing>"), so "directional, go verify" says *where*. Completes the honesty posture.
+  - **Low-rot, and the right way to handle data we deliberately keep directional:** a LINK to a provider's pricing page stays current on its own — unlike EMBEDDING fast-changing data (the trap we've refused for egress/CFE/adequacy). Links give the user live precision without us owning the maintenance.
+  - **Contextual, not a link farm:** each tool optionally returns its source WITH its answer; `explain_methodology_and_limits` lists them. Partly just SURFACING the `_source` fields our data files already carry (pricing.json / emission_factors.json / inference_energy.json) — so it's cheap.
+  - **Guardrails:** links must be PRIMARY/authoritative (provider pricing page, the actual arXiv paper, the official EEA list) — never a blog. Tie each link to a specific claim we make. Small **dead-link upkeep** cost (a dead link erodes the very trust this builds). Scope strictly to verification sources for numbers we already produce — NOT a curated "cool cloud-cost sites" directory (that rots).
 
 ---
 
