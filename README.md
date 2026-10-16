@@ -1,10 +1,12 @@
 # GreenPick
 
+![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Tests: 65 passing](https://img.shields.io/badge/tests-65%20passing-brightgreen) ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![MCP tools: 15](https://img.shields.io/badge/MCP%20tools-15-0ea5e9)
+
 A **design-time sustainability co-pilot** that runs as an MCP server inside your vibe-coding
 environment (Cursor / Claude Code / Kiro). When you're deciding **where to deploy**, it gives a
 greener region choice with an honest **carbon + cost + latency** tradeoff — in-editor, in seconds.
 
-> **Status: working — 14 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
+> **Status: working — 15 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
 > GPU-training placement, right-sizing, serving-pattern and data-locality/residency checks — all
 > shipped. Falls back to clearly-labelled mock data offline or without API keys.
@@ -14,6 +16,20 @@ greener region choice with an honest **carbon + cost + latency** tradeoff — in
 *The same 40-GPU-hour training run emits ~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney — a ~30×
 difference from region choice alone. GreenPick surfaces that (with the cost and latency tradeoff)
 at the moment you choose.*
+
+**▶ [See the 5-minute demo](docs/demo.md)** — three scenarios with real tool output (training placement, the egress backfire, the forecast).
+
+## Contents
+
+- [Why this exists](#why-this-exists)
+- [What it is / is NOT](#what-it-is--is-not)
+- [Scope](#scope)
+- [MCP tools](#mcp-tools)
+- [Data sources](#data-sources-free-swappable-behind-one-interface)
+- [Honest limitations](#honest-limitations-shipped-in-the-tool-itself)
+- [Quick start](#quick-start)
+- [FAQ](#faq)
+- [License](#license)
 
 ## Why this exists
 
@@ -104,6 +120,29 @@ pytest                          # run tests
 
 Connect it to an MCP client (e.g. Kiro / Claude Code / Cursor) by pointing the client at
 `python -m greenpick` in this directory. See `.env.example` for switching the data source.
+
+## FAQ
+
+**Do I need API keys?** No — GreenPick runs on clearly-labelled mock data out of the box. For *live*
+carbon, set two free keys in `.env` (`EIA_API_KEY` for US, `ENTSOE_TOKEN` for EU) and
+`GREENPICK_CARBON_SOURCE=auto`. Without them it still works; it just says `quality: "mock"`.
+
+**Why "directional" and not audited numbers?** Because it's for a *design-time decision*, not a
+compliance report. "Stockholm is ~30× cleaner than Sydney" is what you need to pick a region in
+seconds — a certified figure is a different job for a different tool (Electricity Maps, WattTime).
+GreenPick is for *decisions*, not *disclosures*, and says so in every tool's limitations.
+
+**What happens for a region with no live data?** It falls back to the recent historical pattern or
+to mock, and labels which — it never presents a fallback as a live reading. Forecast likewise degrades
+to historical (labelled) where no day-ahead feed exists (e.g. US).
+
+**Can it rank Claude vs GPT vs Llama for carbon?** No, by design. `estimate_inference_carbon` works by
+model *size class* (self-hosted-friendly), not a named-model leaderboard — vendors don't disclose the
+serving details that would make such a ranking honest.
+
+**How do I ask it something?** You don't call tools directly — you talk to your MCP client in plain
+language ("where's the greenest region to run this?") and it invokes the right tool. See the
+[demo](docs/demo.md) for the kinds of questions that trigger each one.
 
 ## License
 
