@@ -19,6 +19,15 @@ at the moment you choose.*
 
 **▶ [See the 5-minute demo](docs/demo.md)** — three scenarios with real tool output (training placement, the egress backfire, the forecast).
 
+## Features
+
+- 🌍 **Greener region picks** — ranked by carbon, with the cost + latency tradeoff shown, not hidden.
+- ⏱ **Carbon-aware scheduling** — run deferrable jobs (ETL, batch, training) when the grid is cleanest, now or day-ahead.
+- ⚡ **GPU training & LLM inference carbon** — estimate a run's footprint and the greener *where* + *when*.
+- 🧮 **Right-sizing that cuts cost *and* carbon** — the FinOps win with a carbon twin.
+- 🛡 **Backfire guards** — flags when a greener move loses to egress, or crosses a data-residency line.
+- 🔌 **Live US + EU grid data**, honest mock fallback — **no API keys required to start**.
+
 ## Contents
 
 - [Why this exists](#why-this-exists)
@@ -29,6 +38,7 @@ at the moment you choose.*
 - [Honest limitations](#honest-limitations-shipped-in-the-tool-itself)
 - [Quick start](#quick-start)
 - [FAQ](#faq)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Why this exists
@@ -143,6 +153,13 @@ serving details that would make such a ranking honest.
 **How do I ask it something?** You don't call tools directly — you talk to your MCP client in plain
 language ("where's the greenest region to run this?") and it invokes the right tool. See the
 [demo](docs/demo.md) for the kinds of questions that trigger each one.
+
+## Contributing
+
+Contributions of any kind are welcome — a bug report, a data-source correction, a sharper caveat, or
+code. See [CONTRIBUTING.md](CONTRIBUTING.md) for the short version. The one thing GreenPick asks:
+keep it **honest and directional** — no invented numbers, no precision the data can't back (that
+discipline is the whole point).
 
 ## License
 
