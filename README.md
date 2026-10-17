@@ -1,6 +1,15 @@
-# GreenPick
+<p align="center">
+  <img src="docs/img/logo.svg" alt="GreenPick logo — a leaf whose veins are circuit traces" width="120" />
+</p>
 
-![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Tests: 65 passing](https://img.shields.io/badge/tests-65%20passing-brightgreen) ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![MCP tools: 15](https://img.shields.io/badge/MCP%20tools-15-0ea5e9)
+<h1 align="center">GreenPick</h1>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
+  <img src="https://img.shields.io/badge/tests-65%20passing-brightgreen" alt="Tests: 65 passing" />
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+" />
+  <img src="https://img.shields.io/badge/MCP%20tools-15-0ea5e9" alt="MCP tools: 15" />
+</p>
 
 A **design-time sustainability co-pilot** that runs as an MCP server inside your vibe-coding
 environment (Cursor / Claude Code / Kiro). When you're deciding **where to deploy**, it gives a

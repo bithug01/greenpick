@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" font-family="system-ui, sans-serif">
+  <rect width="300" height="300" fill="none"/>
+
+  <!-- whole leaf group, rotated to a diagonal (tip up to the right) -->
+  <g transform="translate(150,150) rotate(38) translate(-70,-120)">
+
+    <!-- stem: small + angled with a slight kink -->
+    <path d="M70 226 C76 216 74 206 62 196" stroke="#15803d" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <!-- classic ovate leaf -->
+    <path d="M70 18
+             C118 54 140 112 110 176
+             C100 198 84 210 70 214
+             C56 210 40 198 30 176
+             C0 112 22 54 70 18 Z"
+          fill="#16a34a"/>
+
+    <!-- irregular circuit traces (white): meandering trunk + asymmetric offshoots -->
+    <g stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M68 206 L68 176 L58 164 L58 132 L72 118 L72 92 L64 82 L64 52 L74 40 L74 30"/>
+      <path d="M58 164 L40 164 L32 154"/>
+      <path d="M58 150 L80 150 L92 138"/>
+      <path d="M72 118 L94 118 L102 110 L102 100"/>
+      <path d="M72 108 L54 108 L46 100"/>
+      <path d="M64 82 L84 82 L90 76"/>
+      <path d="M64 70 L48 70 L42 62 L42 54"/>
+      <path d="M74 52 L90 52"/>
+      <path d="M58 140 L50 132"/>
+      <path d="M72 100 L78 94"/>
+      <path d="M68 190 L82 190 L88 184"/>
+    </g>
+
+    <!-- hollow node pads: green centre (leaf showing through) with a white ring -->
+    <g fill="#16a34a" stroke="#ffffff" stroke-width="2.4">
+      <circle cx="74" cy="30" r="4.6"/>
+      <circle cx="68" cy="206" r="4.6"/>
+      <circle cx="32" cy="154" r="3.6"/>
+      <circle cx="92" cy="138" r="3.6"/>
+      <circle cx="102" cy="100" r="3.6"/>
+      <circle cx="46" cy="100" r="3.2"/>
+      <circle cx="90" cy="76" r="3.2"/>
+      <circle cx="42" cy="54" r="3.6"/>
+      <circle cx="90" cy="52" r="3.2"/>
+      <circle cx="50" cy="132" r="2.9"/>
+      <circle cx="78" cy="94" r="2.9"/>
+      <circle cx="88" cy="184" r="3.2"/>
+    </g>
+  </g>
+</svg>
