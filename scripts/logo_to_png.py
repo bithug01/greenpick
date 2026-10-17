@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 GREEN = (22, 163, 74, 255)      # #16a34a
-STEM = (21, 128, 61, 255)       # #15803d
+STEM = (134, 239, 172, 255)     # #86efac (light stem)
 WHITE = (255, 255, 255, 255)
 
 SS = 4                           # supersample factor for smooth edges
@@ -50,33 +50,36 @@ leaf_pts += cubic((110, 176), (100, 198), (84, 210), (70, 214))
 leaf_pts += cubic((70, 214), (56, 210), (40, 198), (30, 176))
 leaf_pts += cubic((30, 176), (0, 112), (22, 54), (70, 18))
 
-# Circuit traces (polylines) and via pads (cx,cy,r) — straight from the SVG.
+# midrib is now a single arc (cubic Bezier), sampled to a polyline:
+midrib = cubic((68, 206), (58, 150), (66, 78), (74, 30), n=40)
+
+# Circuit branch traces (polylines) and via pads (cx,cy,r) — v7 geometry (no base pad).
 traces = [
-    [(68, 206), (68, 176), (58, 164), (58, 132), (72, 118), (72, 92), (64, 82), (64, 52), (74, 40), (74, 30)],
-    [(58, 164), (40, 164), (32, 154)],
-    [(58, 150), (80, 150), (92, 138)],
-    [(72, 118), (94, 118), (102, 110), (102, 100)],
-    [(72, 108), (54, 108), (46, 100)],
-    [(64, 82), (84, 82), (90, 76)],
-    [(64, 70), (48, 70), (42, 62), (42, 54)],
-    [(74, 52), (90, 52)],
-    [(58, 140), (50, 132)],
-    [(72, 100), (78, 94)],
-    [(68, 190), (82, 190), (88, 184)],
+    [(61, 168), (40, 168), (32, 158)],
+    [(62, 150), (82, 150), (92, 140)],
+    [(66, 120), (92, 120), (100, 112), (100, 102)],
+    [(64, 110), (48, 110), (40, 102)],
+    [(69, 84), (88, 84), (94, 78)],
+    [(68, 72), (52, 72), (46, 64), (46, 56)],
+    [(73, 54), (89, 54)],
+    [(61, 142), (53, 134)],
+    [(67, 100), (73, 94)],
+    [(63, 188), (80, 188), (86, 182)],
 ]
-pads = [(74, 30, 4.6), (68, 206, 4.6), (32, 154, 3.6), (92, 138, 3.6), (102, 100, 3.6),
-        (46, 100, 3.2), (90, 76, 3.2), (42, 54, 3.6), (90, 52, 3.2), (50, 132, 2.9),
-        (78, 94, 2.9), (88, 184, 3.2)]
-stem = [(70, 226), (76, 216), (74, 206), (62, 196)]  # bezier ctrl pts; sample it
+pads = [(74, 30, 4.6), (32, 158, 3.6), (92, 140, 3.6), (100, 102, 3.6),
+        (40, 102, 3.2), (94, 78, 3.2), (46, 56, 3.6), (89, 54, 3.2), (53, 134, 2.9),
+        (73, 94, 2.9), (86, 182, 3.2)]
 
 
 def draw(img_draw):
-    # stem (sampled bezier), green-dark, round caps approximated by thick line
+    # stem (sampled bezier), light green, thinner
     sp = cubic((70, 226), (76, 216), (74, 206), (62, 196), n=20)
-    _polyline(img_draw, sp, STEM, 6)
+    _polyline(img_draw, sp, STEM, 5)
     # leaf body
     img_draw.polygon([tx(x, y) for (x, y) in leaf_pts], fill=GREEN)
-    # traces (white)
+    # midrib arc (white)
+    _polyline(img_draw, midrib, WHITE, 3.2)
+    # branch traces (white)
     for tr in traces:
         _polyline(img_draw, tr, WHITE, 3)
     # hollow pads: green fill + white ring

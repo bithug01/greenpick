@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" font-family="system-ui, sans-serif">
   <rect width="120" height="120" fill="none"/>
 
-  <!-- simplified mark for small sizes (favicon): classic leaf, few bold traces, large hollow pads -->
+  <!-- simplified mark for small sizes: smooth-arc midrib, few bold traces, large hollow pads -->
   <g transform="translate(60,60) rotate(38) translate(-60,-62)">
 
-    <!-- small angled stem -->
-    <path d="M60 110 C64 104 63 98 55 92" stroke="#15803d" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- light, thin stem -->
+    <path d="M60 110 C64 104 63 98 55 92" stroke="#86efac" stroke-width="5" fill="none" stroke-linecap="round"/>
 
     <!-- classic ovate leaf (scaled) -->
     <path d="M60 10
@@ -16,20 +16,19 @@
           transform="scale(0.78) translate(17,2)"
           fill="#16a34a"/>
 
-    <!-- few bold traces (readable tiny) -->
+    <!-- midrib: clean arc; few bold branches -->
     <g stroke="#ffffff" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M58 104 L58 60 L66 50 L66 30"/>
-      <path d="M58 82 L40 82 L34 74"/>
-      <path d="M58 68 L76 68 L82 60"/>
-      <path d="M66 46 L50 46"/>
+      <path d="M58 104 C52 74 56 48 66 30"/>
+      <path d="M55 82 L40 82 L34 74"/>
+      <path d="M58 64 L76 64 L82 56"/>
+      <path d="M62 46 L50 46"/>
     </g>
 
-    <!-- large hollow pads -->
+    <!-- large hollow pads (no base pad) -->
     <g fill="#16a34a" stroke="#ffffff" stroke-width="3.4">
       <circle cx="66" cy="30" r="6"/>
-      <circle cx="58" cy="104" r="6"/>
       <circle cx="34" cy="74" r="5"/>
-      <circle cx="82" cy="60" r="5"/>
+      <circle cx="82" cy="56" r="5"/>
       <circle cx="50" cy="46" r="4.6"/>
     </g>
   </g>
