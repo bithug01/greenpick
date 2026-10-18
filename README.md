@@ -12,8 +12,9 @@
 </p>
 
 A **design-time sustainability co-pilot** that runs as an MCP server inside your vibe-coding
-environment (Cursor / Claude Code / Kiro). When you're deciding **where to deploy**, it gives a
-greener region choice with an honest **carbon + cost + latency** tradeoff — in-editor, in seconds.
+environment (Cursor / Claude Code / Kiro). Ask it where to deploy, when to run a job, or how to
+right-size — and it answers with an honest **carbon + cost + latency** tradeoff, in-editor, in
+seconds. (It responds when you ask; auto-nudging on infra-code changes is on the roadmap.)
 
 > **Status: working — 15 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
@@ -25,17 +26,17 @@ greener region choice with an honest **carbon + cost + latency** tradeoff — in
 </p>
 
 *The same 40-GPU-hour training run emits ~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney — a ~30×
-difference from region choice alone. GreenPick surfaces that (with the cost and latency tradeoff)
-at the moment you choose.*
+difference from region choice alone. Ask GreenPick and it surfaces that (with the cost and latency
+tradeoff) while you're still in the editor, before you commit.*
 
 **▶ [See the 5-minute demo](docs/demo.md)** — three scenarios with real tool output (training placement, the egress backfire, the forecast).
 
 ## Features
 
+- 🧮 **Right-sizing that cuts cost *and* carbon together** — the FinOps win with a carbon twin. The money saved is the reason to run it; the carbon comes free.
+- ⏱ **Carbon-aware scheduling** — run deferrable jobs (ETL, batch, training) when the grid is cleanest, now or day-ahead. A decision you make for *every* recurring job.
+- ⚡ **GPU training & LLM inference carbon** — estimate a run's footprint and the greener *where* + *when*; the size/placement choices that actually move the number.
 - 🌍 **Greener region picks** — ranked by carbon, with the cost + latency tradeoff shown, not hidden.
-- ⏱ **Carbon-aware scheduling** — run deferrable jobs (ETL, batch, training) when the grid is cleanest, now or day-ahead.
-- ⚡ **GPU training & LLM inference carbon** — estimate a run's footprint and the greener *where* + *when*.
-- 🧮 **Right-sizing that cuts cost *and* carbon** — the FinOps win with a carbon twin.
 - 🛡 **Backfire guards** — flags when a greener move loses to egress, or crosses a data-residency line.
 - 🔌 **Live US + EU grid data**, honest mock fallback — **no API keys required to start**.
 
@@ -176,6 +177,15 @@ carbon, set two free keys in `.env` (`EIA_API_KEY` for US, `ENTSOE_TOKEN` for EU
 compliance report. "Stockholm is ~30× cleaner than Sydney" is what you need to pick a region in
 seconds — a certified figure is a different job for a different tool (Electricity Maps, WattTime).
 GreenPick is for *decisions*, not *disclosures*, and says so in every tool's limitations.
+
+**My cloud says this region is already 100% renewable — so does region even matter?** That's
+*market-based* accounting (the provider matches usage with renewable certificates/PPAs over a year).
+GreenPick uses *location-based* accounting — the actual carbon intensity of the grid you physically
+draw from, hour to hour. Both are legitimate (the GHG Protocol asks for both), and they answer
+different questions: market-based is about procurement claims; location-based is about the real grid
+your workload leans on right now. GreenPick is deliberately location-based because that's what a
+*placement/timing* decision actually affects — you can't change the provider's annual REC portfolio,
+but you *can* choose a cleaner grid or a cleaner hour. We ignore RECs by design, not oversight.
 
 **What happens for a region with no live data?** It falls back to the recent historical pattern or
 to mock, and labels which — it never presents a fallback as a live reading. Forecast likewise degrades
