@@ -268,6 +268,45 @@ GreenPick honest.
 
 ---
 
+## Competitive landscape (researched 2026-10-17)
+
+Baseline snapshot for strategic memory — competitors move, so re-check before any launch.
+**Verdict: the uniqueness claim survives — nobody offers cross-cloud + carbon/cost/latency + workload
+breadth + in-editor + design-time. The closest MCP is thin; the richer tools are the wrong moment or
+single-cloud.**
+
+**Direct overlap — WATCH:**
+- **SustainOps MCP** — the one real category competitor (MCP server ranking AWS regions by carbon).
+  As researched: mock data, no workload estimates, no cost, no latency. *Owns the label, substance is
+  thin.* Risks: (1) **discoverability** — if it owns the search term, we're the better product nobody
+  finds; (2) **it could close the gap** (mock→real + add axes isn't hard). Our durable moat is NOT the
+  tri-axis (copyable) — it's the **backfire guards + honesty discipline + workload breadth**.
+
+**Adjacent — different moment, NOT direct competitors:**
+- **EcoOrchestrator / GreenPipe** — CI/CD stage: score pipeline jobs, comment least-carbon region on
+  MRs. Double meaning: (a) not our moment (merge-time, not in-editor), BUT (b) they already do the
+  auto-trigger-on-code-change thing our "only answers when asked" gap wants. **So the CI/CD roadmap
+  item is CONTESTED ground, not greenfield — temper enthusiasm; our edge there would be tri-axis depth,
+  not the trigger.**
+- **Measurement tools** (Cloud Carbon Footprint, CodeCarbon, Kepler, Green Metrics Tool) — report what
+  you emitted AFTER deploy. Different job (measure vs choose). Not competitors; the thing we hand off to.
+- **Cloud-provider tools** (AWS CCFT, Azure Emissions Dashboard, Google Carbon Footprint + "Low CO₂"
+  region leaf) — **Google's leaf is the closest conceptual overlap** (design-time carbon hint at the
+  choice) but single-cloud, carbon-only, no tradeoff, inside their console. Validates the idea; our
+  defense is cross-cloud neutrality + editor context + breadth (AWS won't help you pick GCP).
+
+**Component overlap — building blocks, NOT rivals (a strength):**
+- **Electricity Maps, WattTime, GSF Carbon Aware SDK** — data/SDK inputs. We already use the free
+  equivalents (EIA, ENTSO-E). Data layer is a solved commodity; our value is the DECISION layer on top.
+
+**Strategic takeaways:**
+1. Uniqueness claim holds — the *combination* isn't offered elsewhere.
+2. Moat is the hard-to-copy parts (guards + breadth + honesty + cross-cloud), NOT "we show 3 axes."
+3. CI/CD is contested (EcoOrchestrator/GreenPipe) — enter only on tri-axis depth, not the trigger.
+4. Done: a "How it differs" note is in the README (pre-empts "isn't this just CCF / Google's leaf?").
+
+---
+
 ## Business model (NOT features) — park, don't build
 
 These are revenue/strategy directions, not tools. Recorded so they're not lost, but they are

@@ -43,7 +43,7 @@ tradeoff) while you're still in the editor, before you commit.*
 ## Contents
 
 - [Why this exists](#why-this-exists)
-- [What it is / is NOT](#what-it-is--is-not)
+- [What it is / is NOT](#what-it-is--is-not) · [How it differs](#how-it-differs-from-whats-out-there)
 - [Scope](#scope)
 - [MCP tools](#mcp-tools)
 - [Data sources](#data-sources-free-swappable-behind-one-interface)
@@ -68,6 +68,21 @@ eyes open.
 - **IS NOT:** audited carbon accounting, ESG/Scope-2 reporting, or a real-time scheduler.
   GreenPick does **not** claim GHG-Protocol or ISO compliance — that's what the paid data vendors
   (Electricity Maps, WattTime) provide. GreenPick is for *decisions*, not *disclosures*.
+
+### How it differs from what's out there
+
+- **Measurement tools** (Cloud Carbon Footprint, CodeCarbon, Kepler) report what you *already*
+  emitted, *after* you deploy. GreenPick advises *before* — at the choice.
+- **Cloud providers' own tools** (AWS CCFT, Azure, Google's "Low CO₂" region labels) cover *one*
+  cloud and show carbon alone. GreenPick is **cross-cloud** and weighs carbon **against cost and
+  latency** so you see the tradeoff, not just a green badge.
+- **CI/CD carbon tools** act at merge time on a pipeline job. GreenPick works earlier, in the
+  editor, across more decisions (scheduling, right-sizing, training/inference, egress & residency).
+- **Grid-data SDKs** (Electricity Maps, WattTime, GSF Carbon Aware SDK) are building blocks;
+  GreenPick is the decision layer on top of that kind of data.
+
+The combination — **cross-cloud, carbon + cost + latency, at design time, in the editor, with
+backfire guards** — is the part nothing else puts together.
 
 ## Scope
 
