@@ -223,4 +223,4 @@ discipline is the whole point).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). © 2026 Perry Beaumont.
+MIT — see [LICENSE](LICENSE). © 2026 Data Science Advisers, LLC.

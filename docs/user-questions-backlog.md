@@ -30,7 +30,7 @@
 >    publish to PyPI so people can `uvx greenpick`. **Pre-publish checklist (verified 2026-10-12):**
 >    - ✅ `.env` is gitignored (line 12) and NOT tracked; no real secrets in tracked files (only env-var
 >      *names* in config + dummy test values "k"/"t"). Re-scan before flipping, but currently clean.
->    - ✅ **LICENSE — DONE.** MIT (© 2026 Perry Beaumont); README updated. Chosen for max adoption +
+>    - ✅ **LICENSE — DONE.** MIT (© 2026 Data Science Advisers, LLC); README updated. Chosen for max adoption +
 >      ecosystem norm, and it doesn't foreclose a later commercial/services layer (permissive core pattern).
 >    - Add clear install instructions (the mcp.json snippet + env-var setup) to the README.
 >    - **public ≠ validated.** Stars/clones mean the pitch *reads* well; only a user saying "I changed my
