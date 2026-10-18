@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
-  <img src="https://img.shields.io/badge/tests-65%20passing-brightgreen" alt="Tests: 65 passing" />
+  <img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests: passing" />
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/MCP%20tools-15-0ea5e9" alt="MCP tools: 15" />
 </p>
@@ -17,8 +17,8 @@ greener region choice with an honest **carbon + cost + latency** tradeoff — in
 
 > **Status: working — 15 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
-> GPU-training placement, right-sizing, serving-pattern and data-locality/residency checks — all
-> shipped. Falls back to clearly-labelled mock data offline or without API keys.
+> GPU-training **and LLM-inference** carbon, right-sizing, serving-pattern and data-locality/residency
+> checks — all shipped. Falls back to clearly-labelled mock data offline or without API keys.
 
 <p align="center">
   <img src="docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
@@ -83,27 +83,51 @@ eyes open.
 - Guardrails: **data-locality / egress** backfire checks and **cross-jurisdiction residency** flags.
 - **Free data only.** No flow-traced consumption accounting; carbon forecast is relative, not absolute.
 
-Roadmap: LLM-inference carbon, data-format/engine efficiency advice, sub-national grid zones,
-CI/CD integration. See `docs/user-questions-backlog.md`.
+Roadmap: data-format/engine efficiency advice, sub-national grid zones, CI/CD integration.
+See `docs/user-questions-backlog.md`.
 
 ## MCP tools
+
+15 tools, grouped by what you're trying to do.
+
+### Pick a region
 
 | Tool | What it does |
 |------|--------------|
 | `compare_regions_tri_axis` | Rank candidate regions by carbon with cost + latency tradeoffs; recommend a pick, each axis rated R/Y/G. Pass `regions` to rank only the ones you'd actually consider. |
 | `greener_alternative_to` | "You picked X — the greenest region within +N ms latency is Y (−Z% carbon, Δcost)." The core nudge. |
-| `estimate_workload_carbon` | Rough kgCO₂/month for a workload in a region (an *estimate*, not a measurement). |
 | `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness. |
-| `cleanest_hours_to_run` | Carbon-aware scheduling: cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction. Pass `window_hours` for a job of known duration → cleanest contiguous window to start at. |
-| `cleanest_time_of_day` | For a **recurring** job (nightly batch): the region's cleanest time of day, each hour-of-day averaged across the recent days. A daily pattern, not a 7-day weekly one. |
-| `carbon_forecast` | Forward-looking: which **upcoming** hours will be cleanest, from the EU day-ahead wind+solar forecast (ENTSO-E). Relative ranking, not absolute gCO₂/kWh. US/uncovered zones degrade to the recent historical pattern. |
-| `greener_instance_family` | Suggest a greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
+
+### Time a job (scheduling)
+
+| Tool | What it does |
+|------|--------------|
+| `cleanest_hours_to_run` | Cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction. Pass `window_hours` for a job of known duration → cleanest contiguous window to start at. |
+| `cleanest_time_of_day` | For a **recurring** job (nightly batch): the region's cleanest time of day, averaged across recent days. A daily pattern, not a 7-day weekly one. |
+| `carbon_forecast` | Forward-looking: which **upcoming** hours will be cleanest, from the EU day-ahead wind+solar forecast (ENTSO-E). Relative ranking; US/uncovered zones degrade to the recent historical pattern. |
+
+### Estimate a workload's carbon
+
+| Tool | What it does |
+|------|--------------|
+| `estimate_workload_carbon` | Rough kgCO₂/month for a workload in a region (an *estimate*, not a measurement). |
+| `estimate_training_carbon` | Carbon of a GPU training run (TDP-based energy × live grid), with greener **where** (region ranking) + **when** (cleanest hours) — the two levers that compound for portable, deferrable training. |
+| `estimate_inference_carbon` | Energy + CO₂ of an LLM **inference** workload, by model size class × output tokens × requests (× live grid). A low–high band; smaller size class is the big lever. Self-hosted-friendly; not a named-model leaderboard. |
+
+### Efficiency & guardrails
+
+| Tool | What it does |
+|------|--------------|
+| `greener_instance_family` | A greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
+| `rightsizing_check` | Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller size cuts **both** cost and carbon → the right-sized target with monthly $ and kg CO₂ saving. |
 | `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
 | `serving_pattern_advice` | For a user-facing platform: serve from one region or several? Traffic-weighted latency + carbon, with the multi-region data-sync egress and cross-jurisdiction residency catches. |
-| `carbon_metric_scaffold` | Emits paste-in instrumentation (Python) so your app reports its own **estimated** carbon over time — observable proxies × GreenPick's power model × live grid. Self-tracking, directional, self-labelled; not a runtime meter. |
-| `rightsizing_check` | Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller size cuts **both** cost and carbon. Give provisioned size + observed utilisation → the right-sized target with monthly $ and kg CO₂ saving. |
-| `estimate_training_carbon` | Carbon of a GPU training run (TDP-based energy × live grid), with greener **where** (region ranking) + **when** (cleanest hours) — the two levers that compound for portable, deferrable training. |
-| `estimate_inference_carbon` | Energy + CO₂ of an LLM **inference** workload, by model size class × output tokens × requests (× live grid). A low–high band; smaller size class is the big lever. Directional, self-hosted-friendly; not a named-model leaderboard. |
+
+### Instrument & understand
+
+| Tool | What it does |
+|------|--------------|
+| `carbon_metric_scaffold` | Emits paste-in instrumentation (Python) so your app reports its own **estimated** carbon over time — observable proxies × GreenPick's power model × live grid. Self-tracking, directional; not a runtime meter. |
 | `explain_methodology_and_limits` | The assumptions and what GreenPick explicitly does **not** claim. |
 
 ## Data sources (free; swappable behind one interface)
