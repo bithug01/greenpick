@@ -20,7 +20,9 @@ greener region choice with an honest **carbon + cost + latency** tradeoff — in
 > GPU-training placement, right-sizing, serving-pattern and data-locality/residency checks — all
 > shipped. Falls back to clearly-labelled mock data offline or without API keys.
 
-![Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)](docs/img/region-carbon-30x.svg)
+<p align="center">
+  <img src="docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
+</p>
 
 *The same 40-GPU-hour training run emits ~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney — a ~30×
 difference from region choice alone. GreenPick surfaces that (with the cost and latency tradeoff)
