@@ -4,6 +4,8 @@
 
 <h1 align="center">GreenPick</h1>
 
+<p align="center"><strong>Write greener, cheaper cloud infrastructure — before you deploy.</strong></p>
+
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
   <img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests: passing" />
