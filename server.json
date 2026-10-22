@@ -21,7 +21,7 @@
       "environmentVariables": [
         {
           "name": "GREENPICK_CARBON_SOURCE",
-          "description": "Carbon data source: 'auto' (US->EIA, EU->ENTSO-E, else mock), 'mock', 'eia', or 'entsoe'. Defaults to mock (offline, no keys).",
+          "description": "Carbon data source: 'auto' (US->EIA, EU->ENTSO-E, else mock), 'mock', 'eia', 'entsoe', or 'electricitymaps'. Defaults to mock (offline, no keys).",
           "default": "mock"
         },
         {
@@ -35,6 +35,22 @@
           "description": "Free EU ENTSO-E grid data token (optional; enables live EU carbon + day-ahead forecast).",
           "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "ELECTRICITYMAPS_TOKEN",
+          "description": "Electricity Maps API token (optional; used when GREENPICK_CARBON_SOURCE=electricitymaps).",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "GREENPICK_CACHE_TTL_SECONDS",
+          "description": "Cache lifetime for fetched grid data, in seconds.",
+          "default": "1800"
+        },
+        {
+          "name": "GREENPICK_LOG_LEVEL",
+          "description": "Logging level (DEBUG, INFO, WARNING, ERROR).",
+          "default": "INFO"
         }
       ]
     }
