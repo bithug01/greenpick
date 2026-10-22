@@ -7,6 +7,7 @@
 <p align="center"><strong>Write greener, cheaper cloud infrastructure — before you deploy.</strong></p>
 
 <p align="center">
+  <img src="https://img.shields.io/pypi/v/greenpick" alt="PyPI version" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
   <img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests: passing" />
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+" />
@@ -175,6 +176,15 @@ flow-traced consumption. Cost is a ballpark, not a quote. Latency is a geographi
 
 ```bash
 # Python 3.11+
+pip install greenpick          # from PyPI
+python -m greenpick            # run the MCP server (stdio)
+```
+
+Or from source, for development (editable install + tests):
+
+```bash
+git clone https://github.com/bithug01/greenpick.git
+cd greenpick
 pip install -e ".[dev]"
 cp .env.example .env            # defaults to mock data — works offline
 python -m greenpick             # run the MCP server (stdio)
