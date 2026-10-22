@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/img/logo.svg" alt="GreenPick logo — a leaf whose veins are circuit traces" width="120" />
+  <img src="https://raw.githubusercontent.com/bithug01/greenpick/master/docs/img/logo.svg" alt="GreenPick logo — a leaf whose veins are circuit traces" width="120" />
 </p>
 
 <h1 align="center">GreenPick</h1>
@@ -28,7 +28,7 @@ seconds. (It responds when you ask; auto-nudging on infra-code changes is on the
 > checks — all shipped. Falls back to clearly-labelled mock data offline or without API keys.
 
 <p align="center">
-  <img src="docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
+  <img src="https://raw.githubusercontent.com/bithug01/greenpick/master/docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
 </p>
 
 *The same 40-GPU-hour training run emits ~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney — a ~30×
