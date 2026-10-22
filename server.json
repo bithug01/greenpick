@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.bithug01/greenpick",
+  "title": "GreenPick",
+  "description": "Design-time sustainability co-pilot: greener, cheaper cloud infrastructure decisions with carbon + cost + latency tradeoffs, in-editor.",
+  "repository": {
+    "url": "https://github.com/bithug01/greenpick",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "greenpick",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "GREENPICK_CARBON_SOURCE",
+          "description": "Carbon data source: 'auto' (US->EIA, EU->ENTSO-E, else mock), 'mock', 'eia', or 'entsoe'. Defaults to mock (offline, no keys).",
+          "default": "mock"
+        },
+        {
+          "name": "EIA_API_KEY",
+          "description": "Free US EIA-930 grid data API key (optional; enables live US carbon).",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "ENTSOE_TOKEN",
+          "description": "Free EU ENTSO-E grid data token (optional; enables live EU carbon + day-ahead forecast).",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

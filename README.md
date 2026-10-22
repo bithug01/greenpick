@@ -6,6 +6,9 @@
 
 <p align="center"><strong>Write greener, cheaper cloud infrastructure — before you deploy.</strong></p>
 
+<!-- mcp-name: io.github.bithug01/greenpick -->
+
+
 <p align="center">
   <img src="https://img.shields.io/pypi/v/greenpick" alt="PyPI version" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
