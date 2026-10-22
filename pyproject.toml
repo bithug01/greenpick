@@ -1,10 +1,23 @@
 [project]
 name = "greenpick"
 version = "0.1.0"
-description = "Design-time sustainability co-pilot (MCP server): greener cloud-region choices with carbon + cost + latency tradeoffs."
+description = "Design-time sustainability co-pilot (MCP server): greener, cheaper cloud infrastructure decisions with carbon + cost + latency tradeoffs."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Data Science Advisers, LLC", email = "info@datascienceadvisers.com" }]
+keywords = ["mcp", "sustainability", "carbon", "cloud", "finops", "developer-tools", "green-software"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "mcp>=1.2,<2",       # Model Context Protocol SDK (FastMCP lives here). Pinned <2: mcp 2.x
                          # renamed FastMCP -> MCPServer and changed APIs; this code targets the 1.x API.
@@ -21,15 +34,25 @@ dev = [
     "ijson>=3.0",   # used only by scripts/refresh_pricing.py (not a runtime dep)
 ]
 
+[project.urls]
+Homepage = "https://github.com/bithug01/greenpick"
+Repository = "https://github.com/bithug01/greenpick"
+Issues = "https://github.com/bithug01/greenpick/issues"
+
 [project.scripts]
 greenpick = "greenpick.__main__:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# Bundle the static JSON models into the wheel. Without this, a pip install from
+# PyPI ships no data files and every tool fails at Path(__file__).parent / "*.json".
+"greenpick.data" = ["*.json"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
