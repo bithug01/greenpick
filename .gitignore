@@ -22,6 +22,9 @@ dist/
 *credentials*
 electricity maps api.txt
 
+# Tooling binaries (downloaded, not source) — e.g. mcp-publisher.exe
+tools/
+
 # Editor / OS
 .vscode/
 .idea/
