@@ -163,8 +163,9 @@ See `docs/user-questions-backlog.md`.
 - Instance-family efficiency: directional perf-per-watt multipliers (`data/instance_families.json`).
 - Latency: great-circle distance from region coordinates to the user's location.
 
-Set `EIA_API_KEY` and `ENTSOE_TOKEN` in `.env` (both free) for live carbon; `GREENPICK_CARBON_SOURCE`
-selects the source (`auto` routes US→EIA, EU→ENTSO-E, else mock).
+Set `EIA_API_KEY` and `ENTSOE_TOKEN` (both free) for live carbon — see
+[Turn on live data](#turn-on-live-data); `GREENPICK_CARBON_SOURCE` selects the source (`auto` routes
+US→EIA, EU→ENTSO-E, else mock).
 
 The data layer is a swappable repository (`MOCK` by default, works offline). Nothing here invents
 numbers: the LLM writes the *rationale*, the code supplies the *figures*.
