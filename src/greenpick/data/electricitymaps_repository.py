@@ -13,6 +13,7 @@ API: GET https://api.electricitymap.org/v3/carbon-intensity/latest?zone=XX
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ import httpx
 from ..models import CarbonReading, Provider, HourlyCarbon
 from .mock_repository import MockCarbonRepository
 from .static_data import region_meta
+from ._net import REQUEST_TIMEOUT, REQUEST_DEADLINE_S, describe_error
 
 log = logging.getLogger("greenpick.electricitymaps")
 
@@ -66,9 +68,11 @@ class ElectricityMapsRepository:
             })
 
         try:
-            async with httpx.AsyncClient(timeout=8) as client:
-                resp = await client.get(_BASE, params={"zone": zone},
-                                        headers={"auth-token": self._token})
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                resp = await asyncio.wait_for(
+                    client.get(_BASE, params={"zone": zone}, headers={"auth-token": self._token}),
+                    timeout=REQUEST_DEADLINE_S,
+                )
 
             if resp.status_code in (401, 403):
                 # Config problem, not a per-region issue. Warn once, then stop trying.
@@ -100,5 +104,6 @@ class ElectricityMapsRepository:
 
         except Exception as e:
             # Network/parse/rate-limit -> mock fallback rather than erroring the tool.
-            log.debug("Electricity Maps call failed for zone %s (%s) — mock fallback", zone, e)
+            log.debug("Electricity Maps call failed for zone %s (%s) — mock fallback",
+                      zone, describe_error(e))
             return await self._fallback.carbon_now(provider, region)

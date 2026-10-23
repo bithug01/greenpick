@@ -14,6 +14,7 @@ Response: XML with <TimeSeries> per production type:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -25,10 +26,16 @@ import httpx
 from ..models import CarbonReading, Provider, HourlyCarbon, ForecastHour
 from .mock_repository import MockCarbonRepository
 from .static_data import region_meta, emission_factors
+from ._net import REQUEST_TIMEOUT, REQUEST_DEADLINE_S, describe_error
 
 log = logging.getLogger("greenpick.entsoe")
 
 _URL = "https://web-api.tp.entsoe.eu/api"
+
+# Retry policy for a slow/flaky upstream, bounded so a tool call never hangs on it:
+_ATTEMPTS = 3
+_FETCH_BUDGET_S = 20.0        # total wall-clock for ALL attempts + backoff of one fetch
+_OUTAGE_COOLDOWN_S = 300.0    # after a failed fetch, skip that zone (labelled fallback) this long
 
 
 def _strip_ns(tag: str) -> str:
@@ -70,6 +77,7 @@ class ENTSOERepository:
         self._cache: dict[str, tuple[float, CarbonReading]] = {}  # EIC -> (fetched_at, reading)
         self._fallback = MockCarbonRepository()
         self._warned_no_token = False
+        self._down_until: dict[str, float] = {}   # EIC -> epoch secs; skip the zone until then
 
     async def carbon_now(self, provider: Provider, region: str) -> CarbonReading:
         meta = region_meta(provider, region) or {}
@@ -114,28 +122,57 @@ class ENTSOERepository:
             "periodEnd": now.strftime("%Y%m%d%H%M"),
         }
 
-        # ENTSO-E is occasionally slow / empty for a given zone (their docs warn about response
-        # times). Retry a couple of times before degrading to mock, since a transient miss would
-        # otherwise show a region as mock for the whole cache window.
-        import asyncio
-        attempts = 3
-        for attempt in range(1, attempts + 1):
+        return await self._get_bounded(eic, params, label="A75")
+
+    def _is_down(self, eic: str) -> bool:
+        return time.time() < self._down_until.get(eic, 0.0)
+
+    async def _get_bounded(self, eic: str, params: dict, label: str,
+                           no_match_is_final: bool = False) -> str | None:
+        """GET with retries inside ONE wall-clock budget, and outage memory.
+
+        ENTSO-E is occasionally slow or empty for a zone (their docs warn about response times), so
+        we retry — but every attempt and backoff shares a single _FETCH_BUDGET_S, so a struggling
+        upstream degrades this call to the labelled fallback in seconds rather than freezing the tool.
+        If the zone still fails, remember it for _OUTAGE_COOLDOWN_S: the next calls (e.g. the other
+        regions in a ranking, then the timing lookup) fall back immediately instead of each waiting
+        out their own retry cycle. Returns the body text, or None (callers fall back)."""
+        if self._is_down(eic):
+            return None
+        deadline = time.monotonic() + _FETCH_BUDGET_S
+        for attempt in range(1, _ATTEMPTS + 1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.5:
+                break
             try:
-                async with httpx.AsyncClient(timeout=15) as client:
-                    resp = await client.get(_URL, params=params)
+                async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                    resp = await asyncio.wait_for(client.get(_URL, params=params),
+                                                  timeout=min(remaining, REQUEST_DEADLINE_S))
                 if resp.status_code in (401, 403):
-                    log.warning("ENTSO-E rejected the token (HTTP %s) — using mock. Check ENTSOE_TOKEN.",
-                                resp.status_code)
+                    log.warning("ENTSO-E rejected the token (HTTP %s) on %s — using fallback. "
+                                "Check ENTSOE_TOKEN.", resp.status_code, label)
                     return None   # auth: don't retry
                 resp.raise_for_status()
                 if resp.text and "<TimeSeries" in resp.text:
                     return resp.text
-                # 200 but no usable generation (transient empty) -> retry
-                log.debug("ENTSO-E empty for %s (attempt %d/%d)", eic, attempt, attempts)
+                # 'No matching data' (common for A65 in some zones) means "not offered", not an
+                # outage: bail quietly without retrying or marking the zone down.
+                if no_match_is_final and "No matching data" in resp.text:
+                    log.debug("ENTSO-E %s: no matching data for %s", label, eic)
+                    return None
+                log.debug("ENTSO-E %s empty for %s (attempt %d/%d)", label, eic, attempt, _ATTEMPTS)
             except Exception as e:
-                log.debug("ENTSO-E call failed for %s (attempt %d/%d): %s", eic, attempt, attempts, e)
-            if attempt < attempts:
-                await asyncio.sleep(0.6 * attempt)   # brief backoff: 0.6s, 1.2s
+                # describe_error, not e: the exception text embeds the URL, which carries the token.
+                log.debug("ENTSO-E %s failed for %s (attempt %d/%d): %s",
+                          label, eic, attempt, _ATTEMPTS, describe_error(e))
+            if attempt < _ATTEMPTS:
+                pause = 0.6 * attempt   # brief backoff: 0.6s, 1.2s — inside the same budget
+                if deadline - time.monotonic() <= pause + 0.5:
+                    break
+                await asyncio.sleep(pause)
+        self._down_until[eic] = time.time() + _OUTAGE_COOLDOWN_S
+        log.info("ENTSO-E unavailable for %s — using the labelled fallback for the next %ds.",
+                 eic, int(_OUTAGE_COOLDOWN_S))
         return None
 
     async def _fetch_forecast_xml(self, eic: str, document_type: str, hours_ahead: int,
@@ -153,31 +190,7 @@ class ENTSOERepository:
             "periodEnd": end.strftime("%Y%m%d%H%M"),
         }
         params["outBiddingZone_Domain" if load else "in_Domain"] = eic
-
-        import asyncio
-        attempts = 3
-        for attempt in range(1, attempts + 1):
-            try:
-                async with httpx.AsyncClient(timeout=15) as client:
-                    resp = await client.get(_URL, params=params)
-                if resp.status_code in (401, 403):
-                    log.warning("ENTSO-E rejected the token (HTTP %s) on forecast — using fallback.",
-                                resp.status_code)
-                    return None
-                resp.raise_for_status()
-                if resp.text and "<TimeSeries" in resp.text:
-                    return resp.text
-                # 'No matching data' (common for A65 in some zones) is not retryable — bail quietly.
-                if "No matching data" in resp.text:
-                    log.debug("ENTSO-E %s: no matching data for %s", document_type, eic)
-                    return None
-                log.debug("ENTSO-E %s empty for %s (attempt %d/%d)", document_type, eic, attempt, attempts)
-            except Exception as e:
-                log.debug("ENTSO-E %s failed for %s (attempt %d/%d): %s",
-                          document_type, eic, attempt, attempts, e)
-            if attempt < attempts:
-                await asyncio.sleep(0.6 * attempt)
-        return None
+        return await self._get_bounded(eic, params, label=document_type, no_match_is_final=True)
 
     async def renewable_forecast(self, provider: Provider, region: str, hours_ahead: int = 24
                                  ) -> list[ForecastHour]:

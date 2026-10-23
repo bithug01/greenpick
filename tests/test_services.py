@@ -1143,3 +1143,94 @@ async def test_serving_echoes_resolved_hub_coordinates():
 def test_catalog_has_no_invented_aws_new_york_region():
     from greenpick.data.static_data import regions
     assert "us-east-nyc" not in regions()["aws"]
+
+
+# --- 0.1.5: secrets never reach logs; a slow upstream can't freeze a tool call ---
+
+import logging
+
+
+def test_http_libraries_do_not_log_request_urls():
+    import greenpick  # noqa: F401  (import side effect sets the levels)
+    # httpx logs full request URLs (which carry our API keys) at INFO; we keep it at WARNING.
+    assert logging.getLogger("httpx").getEffectiveLevel() >= logging.WARNING
+    assert logging.getLogger("httpcore").getEffectiveLevel() >= logging.WARNING
+
+
+@pytest.mark.asyncio
+async def test_eia_key_never_appears_in_logs(monkeypatch, caplog):
+    caplog.set_level(logging.DEBUG)
+    secret = "EIA-SECRET-123"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="boom")   # raise_for_status -> exception text embeds URL
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    r = await EIARepository(api_key=secret).carbon_now("aws", "us-east-1")
+    assert r.quality == "mock"
+    assert secret not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_entsoe_token_never_appears_in_logs(monkeypatch, caplog):
+    caplog.set_level(logging.DEBUG)
+    secret = "ENTSOE-SECRET-456"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="unavailable")
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    monkeypatch.setattr("greenpick.data.entsoe_repository.asyncio.sleep", _no_sleep)
+    r = await ENTSOERepository(token=secret).carbon_now("aws", "eu-north-1")
+    assert r.quality == "mock"
+    assert secret not in caplog.text
+
+
+async def _no_sleep(_seconds):
+    return None
+
+
+@pytest.mark.asyncio
+async def test_entsoe_slow_upstream_is_bounded(monkeypatch):
+    import asyncio, time as _time
+    from greenpick.data import entsoe_repository as er
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(30)   # an upstream that never answers in time
+        return httpx.Response(200, text="")
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    monkeypatch.setattr(er, "_FETCH_BUDGET_S", 1.0)
+    start = _time.monotonic()
+    r = await ENTSOERepository(token="t").carbon_now("aws", "eu-north-1")
+    assert r.quality == "mock"                    # degraded to the labelled fallback...
+    assert _time.monotonic() - start < 3.0        # ...within the budget, not 30s+
+
+
+@pytest.mark.asyncio
+async def test_entsoe_remembers_an_outage(monkeypatch):
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        raise httpx.ConnectError("down", request=request)
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    monkeypatch.setattr("greenpick.data.entsoe_repository.asyncio.sleep", _no_sleep)
+    repo = ENTSOERepository(token="t")
+    await repo.carbon_now("aws", "eu-north-1")
+    after_first = calls["n"]
+    assert after_first >= 1
+    # Same zone again (now, and as history): skipped immediately, no new upstream calls.
+    again = await repo.carbon_now("aws", "eu-north-1")
+    await repo.carbon_history("aws", "eu-north-1")
+    assert again.quality == "mock"
+    assert calls["n"] == after_first

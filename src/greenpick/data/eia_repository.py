@@ -14,6 +14,7 @@ Carbon intensity = sum(gen_fuel * factor_fuel) / sum(gen_fuel).  Directional, no
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -23,6 +24,7 @@ import httpx
 from ..models import CarbonReading, Provider, HourlyCarbon
 from .mock_repository import MockCarbonRepository
 from .static_data import region_meta, emission_factors
+from ._net import REQUEST_TIMEOUT, REQUEST_DEADLINE_S, describe_error
 
 log = logging.getLogger("greenpick.eia")
 
@@ -78,8 +80,9 @@ class EIARepository:
                 "sort[0][direction]": "desc",
                 "length": "2000",   # ~5-7 days of hourly rows x fuels — enough for a daily pattern
             }
-            async with httpx.AsyncClient(timeout=12) as client:
-                resp = await client.get(_URL, params=params)
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                resp = await asyncio.wait_for(client.get(_URL, params=params),
+                                              timeout=REQUEST_DEADLINE_S)
             if resp.status_code in (401, 403):
                 log.warning("EIA rejected the key (HTTP %s) — using mock. Check EIA_API_KEY.",
                             resp.status_code)
@@ -87,7 +90,8 @@ class EIARepository:
             resp.raise_for_status()
             return resp.json().get("response", {}).get("data", [])
         except Exception as e:
-            log.debug("EIA call failed for BA %s (%s) — mock fallback", ba, e)
+            # describe_error, not e: the exception text embeds the URL, which carries the key.
+            log.debug("EIA call failed for BA %s (%s) — mock fallback", ba, describe_error(e))
             return None
 
     async def carbon_history(self, provider: Provider, region: str) -> list[HourlyCarbon]:
