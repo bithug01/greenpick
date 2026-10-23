@@ -197,11 +197,50 @@ pytest                          # run tests
 Connect it to an MCP client (e.g. Kiro / Claude Code / Cursor) by pointing the client at
 `python -m greenpick` in this directory. See `.env.example` for switching the data source.
 
+### Turn on live data
+
+GreenPick runs on labelled mock data until you give it two free keys:
+[EIA](https://www.eia.gov/opendata/register.php) (US grid) and
+[ENTSO-E](https://transparency.entsoe.eu/) (EU grid). Pass them as environment variables.
+(A `.env` file works for a source checkout; if you installed with `pip install greenpick`, use one
+of the options below.)
+
+**In an MCP client** (Kiro, Claude Desktop, Cursor…), add an `env` block to the server entry:
+
+```json
+{
+  "mcpServers": {
+    "greenpick": {
+      "command": "python",
+      "args": ["-m", "greenpick"],
+      "env": {
+        "GREENPICK_CARBON_SOURCE": "auto",
+        "EIA_API_KEY": "your-eia-key",
+        "ENTSOE_TOKEN": "your-entsoe-token"
+      }
+    }
+  }
+}
+```
+
+**In a Jupyter notebook or Python script**, set them before you start (or import) the server:
+
+```python
+import os
+os.environ["GREENPICK_CARBON_SOURCE"] = "auto"
+os.environ["EIA_API_KEY"] = "your-eia-key"
+os.environ["ENTSOE_TOKEN"] = "your-entsoe-token"
+```
+
+Every carbon figure includes a `quality` field: `live` means real grid data, `mock` means a
+fallback value. Check it to confirm live data is on.
+
 ## FAQ
 
 **Do I need API keys?** No — GreenPick runs on clearly-labelled mock data out of the box. For *live*
-carbon, set two free keys in `.env` (`EIA_API_KEY` for US, `ENTSOE_TOKEN` for EU) and
-`GREENPICK_CARBON_SOURCE=auto`. Without them it still works; it just says `quality: "mock"`.
+carbon, set two free keys (`EIA_API_KEY` for US, `ENTSOE_TOKEN` for EU) and
+`GREENPICK_CARBON_SOURCE=auto` — see [Turn on live data](#turn-on-live-data). Without them it still
+works; it just says `quality: "mock"`.
 
 **Why "directional" and not audited numbers?** Because it's for a *design-time decision*, not a
 compliance report. "Stockholm is ~30× cleaner than Sydney" is what you need to pick a region in

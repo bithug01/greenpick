@@ -345,5 +345,5 @@ def explain_methodology_and_limits() -> dict:
         "forecast": "Day-ahead forecast is RELATIVE: upcoming hours ranked by forecast wind+solar output (ENTSO-E A69), not an absolute gCO2/kWh forecast. EU only; US/uncovered zones degrade to the recent historical pattern (labelled 'historical').",
         "data_residency": "GreenPick flags when a recommended move CROSSES a jurisdiction (esp. leaving the EEA) as a geographic heads-up only. It does NOT assess legal/GDPR compliance, does not encode adequacy decisions, and is not legal advice — confirm with your own data governance.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
-        "data_sources": "Electricity Maps free tier (primary); ENTSO-E / EIA / NESO fallbacks; annual averages offline.",
+        "data_sources": "GREENPICK_CARBON_SOURCE=auto routes US regions to EIA-930 and EU regions to ENTSO-E (both free, live); other regions, or any region without a key, use clearly-labelled mock data. Electricity Maps is available when selected explicitly (GREENPICK_CARBON_SOURCE=electricitymaps).",
     }
