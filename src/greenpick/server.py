@@ -314,7 +314,9 @@ async def estimate_training_carbon(
     top_n_regions: int = 5,
 ) -> dict:
     """Carbon of a GPU training run, with greener WHERE (region) and WHEN (hours) guidance.
-    Give the GPU (e.g. 'a100', 'h100', 'l4'), how many, and total GPU-hours for the run. Omit
+    Give the GPU (e.g. 'a100', 'h100', 'l4'), how many (gpu_count), and gpu_hours = TOTAL
+    accelerator-hours across ALL GPUs — e.g. 8 GPUs running for 10 hours is gpu_hours=80, not 10.
+    The output echoes wall_clock_hours (~gpu_hours / gpu_count) for reporting. Omit
     `region` to rank regions greenest-first; pass one to score just that region. Training is both
     portable and deferrable, so this combines region choice with cleanest-hours timing. Directional
     (TDP-based energy); GPU availability per region is NOT checked - verify your card is offered there.

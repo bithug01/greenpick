@@ -89,6 +89,9 @@ async def estimate_training_carbon(
 
     base = TrainingCarbonAdvice(
         gpu=gpu_key, gpu_name=spec["name"], gpu_count=gpu_count, gpu_hours=gpu_hours,
+        # Echo the run's duration so callers report it rather than re-deriving it (a common slip
+        # is reading gpu_hours as per-GPU and multiplying by gpu_count again).
+        wall_clock_hours=round(gpu_hours / max(1, gpu_count), 1),
         utilization=util, est_energy_kwh=energy, limitations=LIMITATIONS,
     )
 

@@ -164,6 +164,7 @@ class TrainingCarbonAdvice(BaseModel):
     gpu_name: str
     gpu_count: int
     gpu_hours: float                              # total accelerator-hours for the run
+    wall_clock_hours: Optional[float] = None      # ~gpu_hours / gpu_count (GPUs run in parallel)
     utilization: float
     est_energy_kwh: float
     # Placement:

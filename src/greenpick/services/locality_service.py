@@ -129,6 +129,10 @@ async def data_locality_check(
     warning = (f"Compute and data are separated {sep}: ~{monthly_cross_boundary_gb:,.0f} GB/mo would "
                f"cross the boundary, costing {cost_txt}, plus ~{transfer_kg:.1f} kg CO2/mo of extra "
                f"transfer. A greener-region move can be undone by this.")
+    if verdict is None:
+        # Point the caller at the optional input that turns this into a net win/backfire verdict.
+        warning += (" For a net verdict, pass carbon_saving_kg_co2_from_move (the kg CO2/mo the move "
+                    "saves, e.g. the difference between estimate_workload_carbon in the two regions).")
 
     if severity == "high":
         rec = ("High exposure. Co-locate compute with the data, or move the data to the greener "

@@ -22,15 +22,35 @@ _HEADROOM = 1.4
 _MIN_SAVING_PCT = 10.0
 
 
-def _rightsized_dimension(provisioned: float, utilization: Optional[float]) -> float:
-    """Target = observed usage x headroom, floored at a small minimum, never above provisioned
-    (right-sizing only shrinks here). If utilisation is unknown, leave the dimension unchanged."""
+def _needed(provisioned: float, utilization: Optional[float]) -> float:
+    """Capacity actually needed = observed usage x headroom. If utilisation is unknown, assume the
+    dimension is needed in full (we only right-size what the user told us about)."""
     if utilization is None:
         return provisioned
     u = max(0.0, min(1.0, utilization))
-    target = provisioned * u * _HEADROOM
-    target = max(0.5, target)              # floor: don't suggest sub-0.5 vCPU/GB
-    return min(provisioned, round(target, 1))
+    return provisioned * u * _HEADROOM
+
+
+# Standard instance shapes shared by AWS / GCP / Azure: vCPU counts step in powers of two (plus the
+# common 48/96/192), and memory comes at ~2 GB/vCPU (compute-optimised), ~4 GB/vCPU (general
+# purpose) or ~8 GB/vCPU (memory-optimised). Recommending only these shapes means the answer is a
+# size you can actually buy, and the saving is priced on that size — not on a fractional ideal.
+_VCPU_SIZES = (1, 2, 4, 8, 16, 32, 48, 64, 96, 128, 192)
+_GB_PER_VCPU = (2, 4, 8)
+
+
+def _standard_size(need_vcpu: float, need_ram: float,
+                   prov_vcpu: float, prov_ram: float) -> tuple[float, float]:
+    """Smallest standard shape covering both needs, never larger than what's provisioned
+    (right-sizing only shrinks or holds). Falls back to the provisioned size if nothing fits."""
+    for v in _VCPU_SIZES:
+        if v < need_vcpu or v > prov_vcpu:
+            continue
+        for ratio in _GB_PER_VCPU:
+            ram = v * ratio
+            if ram >= need_ram and ram <= prov_ram:
+                return float(v), float(ram)
+    return prov_vcpu, prov_ram
 
 
 async def rightsizing_check(
@@ -43,8 +63,9 @@ async def rightsizing_check(
     ram_utilization: Optional[float] = None,
     hours_per_month: float = 730,
 ) -> RightsizingAdvice:
-    rec_vcpu = _rightsized_dimension(vcpu, cpu_utilization)
-    rec_ram = _rightsized_dimension(ram_gb, ram_utilization)
+    rec_vcpu, rec_ram = _standard_size(
+        _needed(vcpu, cpu_utilization), _needed(ram_gb, ram_utilization), vcpu, ram_gb,
+    )
 
     now_wl = Workload(vcpu=vcpu, ram_gb=ram_gb, hours_per_month=hours_per_month)
     rs_wl = Workload(vcpu=rec_vcpu, ram_gb=rec_ram, hours_per_month=hours_per_month)
@@ -66,8 +87,9 @@ async def rightsizing_check(
         usd_txt = f"~${usd_saving:,.0f}/mo" if usd_saving is not None else "cost"
         rationale = (
             f"Over-provisioned: at ~{cpu_utilization*100:.0f}% CPU use, {vcpu:g} vCPU / {ram_gb:g} GB "
-            f"is bigger than you need. Right-size to ~{rec_vcpu:g} vCPU / {rec_ram:g} GB (keeps ~40% "
-            f"headroom) to cut ~{saving_pct:.0f}% - {usd_txt} AND ~{kg_saving:.1f} kg CO2/mo. "
+            f"is bigger than you need. Right-size to {rec_vcpu:g} vCPU / {rec_ram:g} GB (the smallest "
+            f"standard size that keeps ~40% headroom) to cut ~{saving_pct:.0f}% - {usd_txt} AND "
+            f"~{kg_saving:.1f} kg CO2/mo. "
             f"Same work, less waste: the cost and carbon win here are the same action.")
     else:
         rationale = (
@@ -88,6 +110,8 @@ async def rightsizing_check(
         rationale=rationale,
         limitations=("Directional, design-time estimate from the utilisation YOU report — not a "
                      "reading of your running fleet, and not a quote. Keeps ~40% headroom above "
-                     "observed peak; validate against real load before resizing production. Cost "
+                     "observed peak, rounded up to a standard shape (power-of-two vCPU at ~2/4/8 GB "
+                     "per vCPU) — confirm your provider offers that size in the family you need; "
+                     "validate against real load before resizing production. Cost "
                      "uses the dated static table; carbon = power model x live grid intensity."),
     )

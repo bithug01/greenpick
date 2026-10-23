@@ -179,20 +179,20 @@ from greenpick.data.eia_repository import EIARepository
 
 @pytest.mark.asyncio
 async def test_eia_mix_to_carbon_intensity(monkeypatch):
-    # NYISO latest hour: 1000 MWh gas (490) + 1000 MWh nuclear (12) -> weighted mean = 251 gCO2/kWh.
+    # PJM latest hour: 1000 MWh gas (490) + 1000 MWh nuclear (12) -> weighted mean = 251 gCO2/kWh.
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.params.get("facets[respondent][]") == "NYIS"
+        assert request.url.params.get("facets[respondent][]") == "PJM"
         return httpx.Response(200, json={"response": {"data": [
-            {"period": "2026-10-11T18", "respondent": "NYIS", "fueltype": "NG", "value": "1000"},
-            {"period": "2026-10-11T18", "respondent": "NYIS", "fueltype": "NUC", "value": "1000"},
-            {"period": "2026-10-11T17", "respondent": "NYIS", "fueltype": "NG", "value": "9999"},  # older hour, ignored
+            {"period": "2026-10-11T18", "respondent": "PJM", "fueltype": "NG", "value": "1000"},
+            {"period": "2026-10-11T18", "respondent": "PJM", "fueltype": "NUC", "value": "1000"},
+            {"period": "2026-10-11T17", "respondent": "PJM", "fueltype": "NG", "value": "9999"},  # older hour, ignored
         ]}})
 
     orig = httpx.AsyncClient
     monkeypatch.setattr(httpx, "AsyncClient",
                         lambda *a, **k: orig(transport=_mock_transport(handler)))
     repo = EIARepository(api_key="key")
-    r = await repo.carbon_now("aws", "us-east-nyc")   # maps to BA NYIS
+    r = await repo.carbon_now("aws", "us-east-1")     # maps to BA PJM
     assert r.source == "eia"
     assert r.quality == "live"
     assert abs(r.g_co2_per_kwh - 251.0) < 0.5          # (490+12)/2
@@ -209,7 +209,7 @@ async def test_eia_non_us_region_falls_back_to_mock():
 @pytest.mark.asyncio
 async def test_eia_no_key_uses_mock():
     repo = EIARepository(api_key="")
-    r = await repo.carbon_now("aws", "us-east-nyc")
+    r = await repo.carbon_now("aws", "us-east-1")
     assert r.quality == "mock"
 
 
@@ -601,7 +601,7 @@ async def test_serving_concentrated_users_prefer_single_region():
     assert adv.single_region is not None
     assert adv.recommended_pattern == "single_region"
     # Single region should be a US region (nearest the only hub).
-    assert adv.single_region.region in {"us-east-1", "us-west-2", "us-east-nyc", "us-central1",
+    assert adv.single_region.region in {"us-east-1", "us-west-2", "us-central1",
                                         "us-west1", "eastus"}
 
 
@@ -982,7 +982,7 @@ async def test_cleanest_time_of_day_averages_across_days(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient",
                         lambda *a, **k: orig(transport=_mock_transport(handler)))
     repo = EIARepository(api_key="k")
-    adv = await scheduling_service.cleanest_time_of_day(repo, "aws", "us-east-nyc")
+    adv = await scheduling_service.cleanest_time_of_day(repo, "aws", "us-east-1")
     assert adv.days_analyzed == 3
     assert adv.cleanest_hour_of_day == 2      # nuclear-heavy hour, every day
     assert adv.dirtiest_hour_of_day == 18     # gas-heavy hour, every day
@@ -1072,7 +1072,74 @@ async def test_cleanest_hours_eia_multihour(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient",
                         lambda *a, **k: orig(transport=_mock_transport(handler)))
     repo = EIARepository(api_key="k")
-    hist = await repo.carbon_history("aws", "us-east-nyc")
+    hist = await repo.carbon_history("aws", "us-east-1")
     periods = {h.period: h.g_co2_per_kwh for h in hist}
     assert set(periods) == {"2026-10-12T18", "2026-10-12T19"}
     assert periods["2026-10-12T18"] < periods["2026-10-12T19"]  # nuclear-heavy hour cleaner
+
+
+# --- 0.1.4 regressions: findings from outside-agent testing ---
+
+@pytest.mark.asyncio
+async def test_rightsizing_recommends_a_standard_buyable_size():
+    from greenpick.services import rightsizing_service
+    repo = MockCarbonRepository()
+    # 8 vCPU / 32 GB at 15% CPU, 20% RAM: the raw fit is ~1.7 vCPU / ~9 GB, which no cloud sells.
+    adv = await rightsizing_service.rightsizing_check(
+        repo, "aws", "us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15, ram_utilization=0.20,
+    )
+    assert adv.is_oversized
+    assert (adv.recommended_vcpu, adv.recommended_ram_gb) == (2.0, 16.0)   # smallest shape that fits
+    assert adv.recommended_ram_gb / adv.recommended_vcpu in (2, 4, 8)
+    assert "standard size" in adv.rationale
+
+
+@pytest.mark.asyncio
+async def test_rightsizing_unknown_ram_keeps_ram_and_picks_a_real_shape():
+    from greenpick.services import rightsizing_service
+    repo = MockCarbonRepository()
+    # RAM utilisation not given -> keep 32 GB; 2 vCPU / 32 GB isn't a standard shape, so 4 / 32.
+    adv = await rightsizing_service.rightsizing_check(
+        repo, "aws", "us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.18,
+    )
+    assert (adv.recommended_vcpu, adv.recommended_ram_gb) == (4.0, 32.0)
+
+
+@pytest.mark.asyncio
+async def test_training_echoes_wall_clock_hours():
+    from greenpick.services import training_service
+    repo = MockCarbonRepository()
+    adv = await training_service.estimate_training_carbon(
+        repo, gpu="a100", gpu_count=8, gpu_hours=150, region="eu-north-1", provider="aws",
+    )
+    # gpu_hours is TOTAL across GPUs: 150 GPU-hours on 8 GPUs runs ~18.8 h, not 150 h.
+    assert adv.wall_clock_hours == 18.8
+
+
+@pytest.mark.asyncio
+async def test_egress_points_to_saving_input_only_when_missing():
+    from greenpick.services import locality_service
+    repo = MockCarbonRepository()
+    without = await locality_service.data_locality_check(
+        repo, "aws", "us-west-2", "aws", "us-east-1", 500,
+    )
+    assert "carbon_saving_kg_co2_from_move" in without.warning
+    with_saving = await locality_service.data_locality_check(
+        repo, "aws", "us-west-2", "aws", "us-east-1", 500, carbon_saving_kg_co2_from_move=10.0,
+    )
+    assert with_saving.net_carbon_verdict is not None
+    assert "carbon_saving_kg_co2_from_move" not in with_saving.warning
+
+
+@pytest.mark.asyncio
+async def test_serving_echoes_resolved_hub_coordinates():
+    from greenpick.services import serving_service
+    repo = MockCarbonRepository()
+    hubs = [ServingHub(name="us", lat=0, lon=0, share=0.5), ServingHub(name="eu", lat=0, lon=0, share=0.5)]
+    adv = await serving_service.serving_pattern(repo, hubs, Workload(vcpu=1, ram_gb=2))
+    assert all((h.lat, h.lon) != (0.0, 0.0) for h in adv.hubs)
+
+
+def test_catalog_has_no_invented_aws_new_york_region():
+    from greenpick.data.static_data import regions
+    assert "us-east-nyc" not in regions()["aws"]

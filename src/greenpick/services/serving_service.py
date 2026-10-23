@@ -159,8 +159,13 @@ async def serving_pattern(
     recommended, rationale = _decide(single_plan, per_hub, multi_wlat, multi_blended,
                                      len(distinct_regions))
 
+    # Echo hubs with the coordinates actually used (named hubs like "eu" resolve to representative
+    # coords), so the output never shows a misleading 0,0 for a hub that was resolved by name.
+    resolved_hubs = [ServingHub(name=h.name, lat=pt.lat, lon=pt.lon, share=h.share)
+                     for h, pt in zip(hubs, points)]
+
     return ServingPatternAdvice(
-        hubs=hubs, single_region=single_plan, multi_region=per_hub,
+        hubs=resolved_hubs, single_region=single_plan, multi_region=per_hub,
         multi_region_weighted_latency_ms=multi_wlat,
         multi_region_blended_carbon_g_co2_per_kwh=multi_blended,
         recommended_pattern=recommended, data_sync_egress_note=data_sync_note,

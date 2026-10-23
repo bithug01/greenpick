@@ -223,7 +223,7 @@ touch the financial-engineering half or anything needing the actual bill. Carbon
 > **Residency data spike (jurisdiction tagging):**
 > - GOAL: can we get a clean, STABLE jurisdiction tag per region, to flag cross-jurisdiction moves? YES.
 > - All 12 catalog regions tag cleanly: **EEA** = Ireland (eu-west-1, northeurope), Sweden (eu-north-1,
->   swedencentral), Finland (europe-north1); **US** = us-east-1, us-west-2, us-east-nyc, us-central1,
+>   swedencentral), Finland (europe-north1); **US** = us-east-1, us-west-2, us-central1,
 >   us-west1, eastus; **AU** = ap-southeast-2. No UK region in catalog → the thorny Brexit case doesn't arise.
 > - CORRECTNESS NOTE: the GDPR boundary is the **EEA** (27 EU + Norway/Iceland/Liechtenstein), not "EU".
 >   Tag the EEA. (Confirmed: ICO/EDPB.)
