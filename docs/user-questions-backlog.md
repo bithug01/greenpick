@@ -92,6 +92,9 @@ rightsizing_check, explain_methodology_and_limits._
 | "What's the cleanest region to run this *in the next 12 hours*?" (forecast) | `cleanest_hours_to_run` + `compare_regions` | Both are backward-looking (recent history / now). No forecast. Would need a forecast source. | 🟡→🔭 |
 | "Across a whole month, which region is greenest *on average*?" | `region_carbon_now` | Point-in-time only. Would need a rolling-average / historical-mean reading. | 🟡 |
 | "Rank these three regions *I* care about, not all of them." | `compare_regions_tri_axis` | ✅ SHIPPED — `regions` filter on compare + greener_alternative_to; baseline always kept in the set. | ✅ |
+| "So what time should I actually start my training job?" | `estimate_training_carbon`, `cleanest_hours_to_run` | The cleanest window is reported as a past timestamp from recent history (e.g. "start at 2026-10-17T15"), which reads like a literal start date. Present it as a time of day ("start around 15:00 UTC") with the date shown only as evidence. Found in outside-agent testing (2026-10-23). | 🟡 |
+| "I'm on the US East Coast — is there a greener region within ~30 ms?" | `greener_alternative_to` | Catalog has nothing greener near New York, so the answer is always "stay put". Adding Canada Central (Montreal, hydro-heavy, ~20 ms from NYC) and its GCP/Azure equivalents would give a real alternative. Needs a carbon source for Québec. | 🟡 |
+| "My users are in Asia — where should I serve them from?" | `serving_pattern_advice` | Sydney is the only Asia-Pacific region in the catalog, so Singapore-area users get ~199 ms. Add Singapore / Tokyo / Mumbai regions (and a carbon source or labelled mock for each). | 🟡 |
 
 ---
 
