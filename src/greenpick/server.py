@@ -18,7 +18,29 @@ from .services import (
 )
 from .models import ServingHub
 
-mcp = FastMCP("greenpick")
+# Sent to every MCP client at connect. Agents learn a server from its tool list, not its README, and
+# the tool list starts with region-picking — so without this they lead with the rarest decision and
+# skip the most valuable one. This names the strongest uses first and the reporting rules that matter.
+INSTRUCTIONS = """\
+GreenPick advises on cloud infrastructure decisions BEFORE you deploy, weighing carbon, cost and \
+latency together. Strongest uses, in order:
+1. Right-sizing (rightsizing_check): an over-provisioned instance cut to a standard, buyable size \
+saves money and carbon in the same move. Lead with the monthly dollar saving.
+2. Scheduling deferrable jobs: cleanest_hours_to_run (one-off), cleanest_time_of_day (recurring), \
+carbon_forecast (EU day-ahead).
+3. GPU training and LLM inference footprints: estimate_training_carbon (gpu_hours is the TOTAL across \
+all GPUs; report wall_clock_hours as the run length), estimate_inference_carbon.
+4. Efficiency and placement: greener_instance_family, compare_regions_tri_axis, greener_alternative_to, \
+serving_pattern_advice; carbon_metric_scaffold for an app to track its own estimated carbon.
+Before recommending a region move, run data_locality_egress_check: egress can erase the win. Mention \
+any residency_note.
+Every carbon figure carries source and quality fields. Report 'mock', 'cached' or 'historical' values \
+as such, never as live readings. If a call fails or output is missing, say so rather than describing \
+what the tool would return. GreenPick estimates; it does not measure running systems or report model \
+accuracy. Use explain_methodology_and_limits when asked how a number was produced.\
+"""
+
+mcp = FastMCP("greenpick", instructions=INSTRUCTIONS)
 _repo = get_repository()
 
 

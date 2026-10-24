@@ -224,14 +224,38 @@ of the options below.)
 }
 ```
 
-**In a Jupyter notebook or Python script**, set them before you start (or import) the server:
+**In a Jupyter notebook or Python script**, connect with the MCP client library and pass the keys
+in `env`. The library starts GreenPick as a separate process and doesn't forward the notebook's own
+environment variables to it:
 
 ```python
-import os
-os.environ["GREENPICK_CARBON_SOURCE"] = "auto"
-os.environ["EIA_API_KEY"] = "your-eia-key"
-os.environ["ENTSOE_TOKEN"] = "your-entsoe-token"
+import sys
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+params = StdioServerParameters(
+    command=sys.executable,
+    args=["-m", "greenpick"],
+    env={
+        "GREENPICK_CARBON_SOURCE": "auto",
+        "EIA_API_KEY": "your-eia-key",
+        "ENTSOE_TOKEN": "your-entsoe-token",
+    },
+)
+
+# In Jupyter, errlog must be a real file (the notebook's stderr has no fileno()).
+with open("greenpick-server.log", "w") as errlog:
+    async with stdio_client(params, errlog=errlog) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(
+                "region_carbon_now", {"provider": "aws", "region": "us-west-2"}
+            )
+            print(result.content[0].text)
 ```
+
+Top-level `await` works in Jupyter. In a plain script, put the `with` block inside an `async def`
+and run it with `asyncio.run(...)`.
 
 Every carbon figure includes a `quality` field: `live` means real grid data, `mock` means a
 fallback value. Check it to confirm live data is on.

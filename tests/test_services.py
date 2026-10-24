@@ -1234,3 +1234,20 @@ async def test_entsoe_remembers_an_outage(monkeypatch):
     await repo.carbon_history("aws", "eu-north-1")
     assert again.quality == "mock"
     assert calls["n"] == after_first
+
+
+# --- 0.1.6: server-level instructions steer agents (they read the tool list, not the README) ---
+
+def test_server_sends_instructions_that_lead_with_rightsizing():
+    from greenpick import server
+    text = server.mcp.instructions or ""
+    assert "rightsizing_check" in text
+    # Right-sizing is named before region-picking (the tool list itself starts with region tools).
+    assert text.index("rightsizing_check") < text.index("compare_regions_tri_axis")
+    # The reporting rules that outside agents got wrong in testing.
+    assert "mock" in text and "TOTAL" in text and "data_locality_egress_check" in text
+    # Every tool named in the instructions actually exists.
+    import re, asyncio
+    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note"}
+    registered = {t.name for t in asyncio.run(server.mcp.list_tools())}
+    assert named <= registered, named - registered
