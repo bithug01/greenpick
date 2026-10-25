@@ -158,6 +158,7 @@ async def data_locality_check(
         egress_rate_usd_per_gb_low=rate_low, egress_rate_usd_per_gb_high=rate_high,
         est_monthly_egress_usd_low=cost_low, est_monthly_egress_usd_high=cost_high,
         est_monthly_transfer_kg_co2=transfer_kg,
+        transfer_carbon_source=reading.source, transfer_carbon_quality=reading.quality,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
         net_carbon_verdict=verdict, residency_note=residency_note,
         warning=warning, recommendation=rec, limitations=LIMITATIONS,

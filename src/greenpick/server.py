@@ -17,6 +17,7 @@ from .services import (
     rightsizing_service, inference_service,
 )
 from .models import ServingHub
+from .services.data_hint import with_hint
 
 # Sent to every MCP client at connect. Agents learn a server from its tool list, not its README, and
 # the tool list starts with region-picking — so without this they lead with the rarest decision and
@@ -35,7 +36,9 @@ serving_pattern_advice; carbon_metric_scaffold for an app to track its own estim
 Before recommending a region move, run data_locality_egress_check: egress can erase the win. Mention \
 any residency_note.
 Every carbon figure carries source and quality fields. Report 'mock', 'cached' or 'historical' values \
-as such, never as live readings — including figures derived from them, such as a kg CO2 saving. If a call fails or output is missing, say so rather than describing \
+as such, never as live readings — including figures derived from them, such as a kg CO2 saving. \
+When a result includes live_data_hint, pass it on: it says why the data isn't live and how to turn \
+live data on. If a call fails or output is missing, say so rather than describing \
 what the tool would return. GreenPick estimates; it does not measure running systems or report model \
 accuracy. Use explain_methodology_and_limits when asked how a number was produced.\
 """
@@ -73,7 +76,7 @@ async def compare_regions_tri_axis(
         baseline_region=baseline_region,
         regions=[r for r in (regions or [])] or None,
     )
-    return rec.model_dump()
+    return with_hint(rec.model_dump())
 
 
 @mcp.tool()
@@ -103,7 +106,7 @@ async def greener_alternative_to(
         baseline_region=current_region,
         regions=[r for r in (regions or [])] or None,
     )
-    return rec.model_dump()
+    return with_hint(rec.model_dump())
 
 
 @mcp.tool()
@@ -119,7 +122,7 @@ async def estimate_workload_carbon(
     reading = await carbon_service.carbon_now(_repo, provider, region)  # type: ignore[arg-type]
     wl = Workload(vcpu=vcpu, ram_gb=ram_gb, hours_per_month=hours_per_month)
     kg = carbon_service.estimate_kg_co2_per_month(wl, reading)
-    return {
+    return with_hint({
         "provider": provider,
         "region": region,
         "estimated_kg_co2_per_month": kg,
@@ -127,14 +130,14 @@ async def estimate_workload_carbon(
         "carbon_source": reading.source,
         "carbon_quality": reading.quality,
         "note": "Estimate only: documented power model x grid intensity. Not a measurement.",
-    }
+    })
 
 
 @mcp.tool()
 async def region_carbon_now(provider: str, region: str) -> dict:
     """Current grid carbon intensity for a region, with source, timestamp, and data freshness."""
     reading = await carbon_service.carbon_now(_repo, provider, region)  # type: ignore[arg-type]
-    return reading.model_dump()
+    return with_hint(reading.model_dump())
 
 
 @mcp.tool()
@@ -149,7 +152,7 @@ async def cleanest_hours_to_run(
     advice = await scheduling_service.cleanest_hours(
         _repo, provider, region, top_n, window_hours=window_hours,  # type: ignore[arg-type]
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -177,7 +180,7 @@ async def greener_instance_family(
         _repo, provider, region, vcpu, ram_gb,  # type: ignore[arg-type]
         current_family=current_family, hours_per_month=hours_per_month,
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -199,7 +202,7 @@ async def estimate_inference_carbon(
         _repo, size_class, monthly_requests, avg_output_tokens=avg_output_tokens,  # type: ignore[arg-type]
         region=region, provider=provider,  # type: ignore[arg-type]
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -222,7 +225,7 @@ async def rightsizing_check(
         _repo, provider, region, vcpu, ram_gb, cpu_utilization,  # type: ignore[arg-type]
         ram_utilization=ram_utilization, hours_per_month=hours_per_month,
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -245,7 +248,7 @@ async def carbon_metric_scaffold(
         _repo, language=language, region=region, provider=provider,  # type: ignore[arg-type]
         vcpu=vcpu, ram_gb=ram_gb,
     )
-    return scaffold.model_dump()
+    return with_hint(scaffold.model_dump())
 
 
 @mcp.tool()
@@ -275,7 +278,7 @@ async def serving_pattern_advice(
         _repo, parsed, Workload(vcpu=vcpu, ram_gb=ram_gb),
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -297,7 +300,7 @@ async def data_locality_egress_check(
         monthly_cross_boundary_gb=monthly_cross_boundary_gb,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -312,7 +315,7 @@ async def carbon_forecast(
     advice = await forecast_service.carbon_forecast(
         _repo, provider, region, hours_ahead=hours_ahead, top_n=top_n,  # type: ignore[arg-type]
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -322,7 +325,7 @@ async def cleanest_time_of_day(provider: str, region: str) -> dict:
     dirtiest hour-of-day and the % gap. Honest scope: a DAILY pattern over the few days of free
     data, NOT a 7-day day-of-week pattern. Use `cleanest_hours_to_run` for a one-off job's timing."""
     advice = await scheduling_service.cleanest_time_of_day(_repo, provider, region)  # type: ignore[arg-type]
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -349,7 +352,7 @@ async def estimate_training_carbon(
         region=region, provider=provider, utilization=utilization,  # type: ignore[arg-type]
         top_n_regions=top_n_regions,
     )
-    return advice.model_dump()
+    return with_hint(advice.model_dump())
 
 
 @mcp.tool()
@@ -369,5 +372,6 @@ def explain_methodology_and_limits() -> dict:
         "forecast": "Day-ahead forecast is RELATIVE: upcoming hours ranked by forecast wind+solar output (ENTSO-E A69), not an absolute gCO2/kWh forecast. EU only; US/uncovered zones degrade to the recent historical pattern (labelled 'historical').",
         "data_residency": "GreenPick flags when a recommended move CROSSES a jurisdiction (esp. leaving the EEA) as a geographic heads-up only. It does NOT assess legal/GDPR compliance, does not encode adequacy decisions, and is not legal advice — confirm with your own data governance.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
+        "mock_data": "Used when live data isn't available (no key, an uncovered region, or the source didn't respond). Each grid gets a fixed typical value — illustrative, not a current reading — and an illustrative hourly pattern, so timing advice on mock data isn't meaningful. Results that use it are labelled 'mock' and carry a live_data_hint saying why and how to turn live data on.",
         "data_sources": "GREENPICK_CARBON_SOURCE=auto routes US regions to EIA-930 and EU regions to ENTSO-E (both free, live); other regions, or any region without a key, use clearly-labelled mock data. Electricity Maps is available when selected explicitly (GREENPICK_CARBON_SOURCE=electricitymaps).",
     }

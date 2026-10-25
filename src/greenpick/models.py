@@ -277,6 +277,8 @@ class ServingPerHubChoice(BaseModel):
     region: str
     latency_ms: float
     carbon_g_co2_per_kwh: float
+    carbon_source: Optional[str] = None
+    carbon_quality: Optional[str] = None
 
 
 class ServingPatternAdvice(BaseModel):
@@ -311,6 +313,8 @@ class DataLocalityWarning(BaseModel):
     est_monthly_egress_usd_low: Optional[float] = None    # monthly cost range = rate range x GB
     est_monthly_egress_usd_high: Optional[float] = None
     est_monthly_transfer_kg_co2: Optional[float] = None   # secondary, coarse
+    transfer_carbon_source: Optional[str] = None          # grid reading behind the transfer carbon
+    transfer_carbon_quality: Optional[str] = None
     carbon_saving_kg_co2_from_move: Optional[float] = None # echoed back if provided
     net_carbon_verdict: Optional[str] = None    # set only when a saving was supplied
     residency_note: Optional[str] = None        # neutral cross-jurisdiction heads-up, if any

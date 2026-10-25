@@ -58,15 +58,27 @@ async def carbon_forecast(
 
     # --- Degrade: no forward forecast for this region -> recent historical daily pattern ---
     pattern = await scheduling_service.cleanest_time_of_day(repo, provider, region)
-    note = ("No day-ahead forecast available for this region, so this is the recent HISTORICAL "
-            "pattern, not a true forecast. ")
-    if pattern.cleanest_hour_of_day is not None:
-        note += (f"Over the last ~{pattern.days_analyzed} day(s) it's been cleanest around "
-                 f"{pattern.cleanest_hour_of_day:02d}:00 - a reasonable default for a recurring job.")
+    if pattern.quality == "mock":
+        # No live history either: the "pattern" is GreenPick's illustrative mock curve. Label it
+        # mock — calling it 'historical' would pass a synthetic shape off as real past data.
+        source, quality = "mock", "mock"
+        note = ("No day-ahead forecast or live history is available for this region, so there's "
+                "no real timing signal here. ")
+        if pattern.cleanest_hour_of_day is not None:
+            note += (f"GreenPick's illustrative mock pattern is cleanest around "
+                     f"{pattern.cleanest_hour_of_day:02d}:00, but that's not meaningful for scheduling.")
     else:
-        note += "No usable recent history either."
+        source, quality = "historical_fallback", "historical"
+        note = ("No day-ahead forecast available for this region, so this is the recent HISTORICAL "
+                "pattern, not a true forecast. ")
+        if pattern.cleanest_hour_of_day is not None:
+            note += (f"Over the last ~{pattern.days_analyzed} day(s) it's been cleanest around "
+                     f"{pattern.cleanest_hour_of_day:02d}:00 UTC - a reasonable default for a "
+                     f"recurring job.")
+        else:
+            note += "No usable recent history either."
     return ForecastAdvice(
-        region=region, provider=provider, source="historical_fallback", quality="historical",
+        region=region, provider=provider, source=source, quality=quality,
         hours_ahead=hours_ahead, cleanest_upcoming=[],
         note=note, limitations=LIMITATIONS,
     )

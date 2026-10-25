@@ -718,13 +718,37 @@ from greenpick.services import forecast_service
 
 
 @pytest.mark.asyncio
-async def test_forecast_degrades_to_historical_without_forecast_source():
-    # MockCarbonRepository has no renewable_forecast -> service falls back to historical pattern.
+async def test_forecast_fallback_on_mock_history_is_labelled_mock():
+    # No forecast and only mock history: the fallback pattern is synthetic, so it must say mock,
+    # not 'historical' (which would pass an illustrative curve off as real past data).
     repo = MockCarbonRepository()
     adv = await forecast_service.carbon_forecast(repo, "aws", "us-east-1", hours_ahead=24)
+    assert adv.source == "mock"
+    assert adv.quality == "mock"
+    assert adv.cleanest_upcoming == []
+    assert "not meaningful" in adv.note
+
+
+@pytest.mark.asyncio
+async def test_forecast_degrades_to_historical_with_live_history(monkeypatch):
+    # US region with live EIA history but no day-ahead forecast -> a real historical fallback.
+    def handler(request: httpx.Request) -> httpx.Response:
+        data = []
+        for day in ("2026-10-10", "2026-10-11"):
+            data += [
+                {"period": f"{day}T02", "fueltype": "NUC", "value": "1800"},
+                {"period": f"{day}T02", "fueltype": "NG", "value": "200"},
+                {"period": f"{day}T18", "fueltype": "NUC", "value": "200"},
+                {"period": f"{day}T18", "fueltype": "NG", "value": "1800"},
+            ]
+        return httpx.Response(200, json={"response": {"data": data}})
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: orig(transport=_mock_transport(handler)))
+    adv = await forecast_service.carbon_forecast(EIARepository(api_key="k"), "aws", "us-east-1")
     assert adv.source == "historical_fallback"
     assert adv.quality == "historical"
-    assert adv.cleanest_upcoming == []
     assert "historical" in adv.note.lower()
 
 
@@ -1248,7 +1272,7 @@ def test_server_sends_instructions_that_lead_with_rightsizing():
     assert "mock" in text and "TOTAL" in text and "data_locality_egress_check" in text
     # Every tool named in the instructions actually exists.
     import re, asyncio
-    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note"}
+    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note", "live_data_hint"}
     registered = {t.name for t in asyncio.run(server.mcp.list_tools())}
     assert named <= registered, named - registered
 
@@ -1315,3 +1339,113 @@ async def test_training_rationale_says_start_around_a_time():
 def test_instructions_cover_derived_mock_figures():
     from greenpick import server
     assert "derived from them" in server.mcp.instructions
+
+
+# --- 0.1.8: a mock result says why it isn't live, and how to turn live data on ---
+
+from greenpick import config as _config
+from greenpick.config import Settings
+from greenpick.services import data_hint
+
+
+def _settings(source="auto", eia="", entsoe="", em=""):
+    return Settings(carbon_source=source, electricitymaps_token=em, eia_api_key=eia,
+                    entsoe_token=entsoe, cache_ttl_seconds=1800, log_level="INFO")
+
+
+def _mock(provider, region):
+    return {"provider": provider, "region": region, "g_co2_per_kwh": 350.0,
+            "source": "mock", "quality": "mock"}
+
+
+def test_hint_when_greenpick_is_set_to_mock(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="mock"))
+    hint = data_hint.with_hint(_mock("aws", "us-east-1"))["live_data_hint"]
+    assert "typical value for each grid, not a current reading" in hint
+    assert "GREENPICK_CARBON_SOURCE=auto" in hint and data_hint.TURN_ON_URL in hint
+
+
+def test_hint_names_the_missing_key(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto", eia="", entsoe="tok"))
+    hint = data_hint.with_hint(_mock("aws", "us-east-1"))["live_data_hint"]
+    assert "set EIA_API_KEY" in hint and "eia.gov/opendata/register" in hint
+    assert "ENTSOE_TOKEN" not in hint
+
+
+def test_hint_when_key_is_set_but_source_did_not_answer(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto", entsoe="tok"))
+    hint = data_hint.with_hint(_mock("aws", "eu-north-1"))["live_data_hint"]
+    assert "ENTSO-E didn't return data for aws/eu-north-1" in hint
+    assert "set ENTSOE_TOKEN" not in hint                       # don't tell them to add a key they have
+
+
+def test_hint_for_a_region_no_free_source_covers(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto", eia="k", entsoe="t"))
+    hint = data_hint.with_hint(_mock("aws", "ap-southeast-2"))["live_data_hint"]
+    assert "No free live source covers aws/ap-southeast-2" in hint
+    assert "set EIA_API_KEY" not in hint and "set ENTSOE_TOKEN" not in hint
+
+
+def test_no_hint_on_live_results(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto", eia="k"))
+    live = {"provider": "aws", "region": "us-east-1", "quality": "live", "source": "eia"}
+    assert "live_data_hint" not in data_hint.with_hint(dict(live))
+    cached = dict(live, quality="cached")
+    assert "live_data_hint" not in data_hint.with_hint(cached)
+
+
+def test_hint_covers_nested_regions_and_flags_mock_timing(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto", entsoe="tok"))
+    result = {
+        "recommended_region": "aws/eu-north-1", "timing_quality": "mock",
+        "options": [
+            {"provider": "aws", "region": "eu-north-1", "carbon_quality": "mock"},
+            {"provider": "aws", "region": "ap-southeast-2", "carbon_quality": "mock"},
+            {"provider": "aws", "region": "us-west-2", "carbon_quality": "live"},
+        ],
+    }
+    hint = data_hint.with_hint(result)["live_data_hint"]
+    assert "aws/eu-north-1" in hint and "aws/ap-southeast-2" in hint
+    assert "us-west-2" not in hint
+    assert "hourly pattern in mock data is illustrative" in hint
+
+
+@pytest.mark.asyncio
+async def test_every_carbon_tool_attaches_the_hint_on_mock(monkeypatch):
+    # End to end through the MCP tool functions, with the server's repo on mock data.
+    from greenpick import server
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="mock"))
+    monkeypatch.setattr(server, "_repo", MockCarbonRepository())
+
+    async def call(name, **kw):
+        f = getattr(server, name)
+        f = getattr(f, "fn", f)
+        return await f(**kw)
+
+    calls = {
+        "region_carbon_now": dict(provider="aws", region="us-east-1"),
+        "rightsizing_check": dict(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15),
+        "estimate_workload_carbon": dict(provider="aws", region="us-east-1", vcpu=4, ram_gb=16),
+        "estimate_training_carbon": dict(gpu="a100", gpu_count=8, gpu_hours=40),
+        "compare_regions_tri_axis": dict(user_lat=40.7, user_lon=-74.0, vcpu=4, ram_gb=16),
+        "cleanest_time_of_day": dict(provider="aws", region="us-east-1"),
+        "carbon_forecast": dict(provider="aws", region="us-east-1"),
+        "data_locality_egress_check": dict(compute_provider="aws", compute_region="us-west-2",
+                                           data_provider="aws", data_region="us-east-1",
+                                           monthly_cross_boundary_gb=500),
+        "serving_pattern_advice": dict(hubs=[{"name": "us", "share": 0.6}, {"name": "eu", "share": 0.4}]),
+    }
+    for name, kw in calls.items():
+        r = await call(name, **kw)
+        assert "live_data_hint" in r, name
+
+
+@pytest.mark.asyncio
+async def test_egress_and_serving_label_their_carbon_quality():
+    from greenpick.services import locality_service, serving_service
+    repo = MockCarbonRepository()
+    eg = await locality_service.data_locality_check(repo, "aws", "us-west-2", "aws", "us-east-1", 500)
+    assert eg.transfer_carbon_quality == "mock" and eg.transfer_carbon_source == "mock"
+    hubs = [ServingHub(name="us", lat=0, lon=0, share=0.5), ServingHub(name="eu", lat=0, lon=0, share=0.5)]
+    sv = await serving_service.serving_pattern(repo, hubs, Workload(vcpu=1, ram_gb=2))
+    assert sv.multi_region and all(c.carbon_quality == "mock" for c in sv.multi_region)

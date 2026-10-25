@@ -123,9 +123,11 @@ async def serving_pattern(
         nearby = [s for s in scored if s[0] <= near_min]
         nearby.sort(key=lambda t: t[1])   # greenest among the near-latency options
         l, g, p, r = nearby[0]
+        reading = carbon_cache[(p, r)]
         per_hub.append(ServingPerHubChoice(
             hub=h.name, provider=p, region=r, latency_ms=round(l, 1),
             carbon_g_co2_per_kwh=g,
+            carbon_source=reading.source, carbon_quality=reading.quality,  # type: ignore[attr-defined]
         ))
 
     multi_wlat = None

@@ -260,7 +260,9 @@ Top-level `await` works in Jupyter. In a plain script, put the `with` block insi
 and run it with `asyncio.run(...)`.
 
 Every carbon figure includes a `quality` field: `live` means real grid data, `mock` means a
-fallback value. Check it to confirm live data is on.
+fallback value. Check it to confirm live data is on. A result that isn't live also includes a
+`live_data_hint` saying why (no key set, the source didn't respond, or no free source covers that
+region) and what to do about it.
 
 ## FAQ
 
