@@ -170,12 +170,14 @@ async def estimate_training_carbon(
 
     if advice.window and advice.window_reduction_pct and advice.window_reduction_pct >= 10:
         w = advice.window
-        time_txt = (f" It runs ~{wall_clock_h}h wall-clock; the cleanest {w.window_hours}h window to "
-                    f"start is {w.start_period} (avg ~{w.avg_g_co2_per_kwh:.0f} gCO2/kWh), "
-                    f"~{advice.window_reduction_pct:.0f}% cleaner than the worst same-length window - "
-                    f"training is deferrable, so this stacks on the region choice.")
+        time_txt = (f" It runs ~{wall_clock_h}h wall-clock; start it around "
+                    f"{scheduling_service.clock_label(w.start_period)} (the cleanest {w.window_hours}h "
+                    f"window in the recent data began {w.start_period}, avg ~{w.avg_g_co2_per_kwh:.0f} "
+                    f"gCO2/kWh), ~{advice.window_reduction_pct:.0f}% cleaner than the worst same-length "
+                    f"window - training is deferrable, so this stacks on the region choice. "
+                    f"A recent pattern, not a forecast.")
     elif advice.potential_reduction_pct and advice.potential_reduction_pct >= 10 and advice.cleanest:
-        best = advice.cleanest[0].period
+        best = scheduling_service.clock_label(advice.cleanest[0].period)
         time_txt = (f" Timing it to the cleanest hours in that region (around {best}) cuts a further "
                     f"~{advice.potential_reduction_pct:.0f}% vs the dirtiest hour - training is "
                     f"deferrable, so this stacks on the region choice.")

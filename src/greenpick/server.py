@@ -35,7 +35,7 @@ serving_pattern_advice; carbon_metric_scaffold for an app to track its own estim
 Before recommending a region move, run data_locality_egress_check: egress can erase the win. Mention \
 any residency_note.
 Every carbon figure carries source and quality fields. Report 'mock', 'cached' or 'historical' values \
-as such, never as live readings. If a call fails or output is missing, say so rather than describing \
+as such, never as live readings — including figures derived from them, such as a kg CO2 saving. If a call fails or output is missing, say so rather than describing \
 what the tool would return. GreenPick estimates; it does not measure running systems or report model \
 accuracy. Use explain_methodology_and_limits when asked how a number was produced.\
 """

@@ -70,7 +70,8 @@ class ForecastAdvice(BaseModel):
 class CleanestWindow(BaseModel):
     """The lowest-average contiguous run of N hours — for timing a job of known duration."""
     window_hours: int
-    start_period: str                 # the hour the window begins (start your job here)
+    start_hour_of_day: Optional[int] = None   # 0..23 — the advice: start around this hour each time
+    start_period: str                 # when that window began in the recent data (evidence, not a date to use)
     end_period: str                   # the last hour in the window
     avg_g_co2_per_kwh: float           # mean intensity across the window
     hours: list[HourlyCarbon] = []     # the per-hour breakdown of the chosen window
@@ -224,7 +225,9 @@ class RightsizingAdvice(BaseModel):
     carbon_now_kg_per_month: Optional[float] = None
     carbon_rightsized_kg_per_month: Optional[float] = None
     monthly_kg_co2_saving: Optional[float] = None
-    saving_pct: Optional[float] = None
+    cost_saving_pct: Optional[float] = None       # % off the monthly bill
+    carbon_saving_pct: Optional[float] = None     # % off monthly kg CO2
+    saving_pct: Optional[float] = None            # = carbon_saving_pct; kept for compatibility
     carbon_source: Optional[str] = None
     carbon_quality: Optional[str] = None
     rationale: str = ""

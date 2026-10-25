@@ -83,13 +83,19 @@ async def rightsizing_check(
 
     is_oversized = saving_pct is not None and saving_pct >= _MIN_SAVING_PCT
 
+    # Separate, labelled percentages: cost and carbon shrink by different fractions (price and power
+    # scale differently with vCPU vs RAM), so one unlabelled % beside a dollar figure misleads.
+    cost_pct = (round(usd_saving / cost_now * 100, 1)
+                if usd_saving is not None and cost_now else None)
+
     if is_oversized:
-        usd_txt = f"~${usd_saving:,.0f}/mo" if usd_saving is not None else "cost"
+        cost_txt = (f"~{cost_pct:.0f}% cheaper (~${usd_saving:,.0f}/mo saved)"
+                    if cost_pct is not None else "a lower bill")
         rationale = (
             f"Over-provisioned: at ~{cpu_utilization*100:.0f}% CPU use, {vcpu:g} vCPU / {ram_gb:g} GB "
             f"is bigger than you need. Right-size to {rec_vcpu:g} vCPU / {rec_ram:g} GB (the smallest "
-            f"standard size that keeps ~40% headroom) to cut ~{saving_pct:.0f}% - {usd_txt} AND "
-            f"~{kg_saving:.1f} kg CO2/mo. "
+            f"standard size that keeps ~40% headroom): {cost_txt} AND ~{saving_pct:.0f}% less carbon "
+            f"(~{kg_saving:.1f} kg CO2/mo, {reading.quality} grid data). "
             f"Same work, less waste: the cost and carbon win here are the same action.")
     else:
         rationale = (
@@ -105,7 +111,8 @@ async def rightsizing_check(
         cost_now_usd_per_month=cost_now, cost_rightsized_usd_per_month=cost_rs,
         monthly_usd_saving=usd_saving,
         carbon_now_kg_per_month=carbon_now, carbon_rightsized_kg_per_month=carbon_rs,
-        monthly_kg_co2_saving=kg_saving, saving_pct=saving_pct,
+        monthly_kg_co2_saving=kg_saving,
+        cost_saving_pct=cost_pct, carbon_saving_pct=saving_pct, saving_pct=saving_pct,
         carbon_source=reading.source, carbon_quality=reading.quality,
         rationale=rationale,
         limitations=("Directional, design-time estimate from the utilisation YOU report — not a "

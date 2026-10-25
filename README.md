@@ -230,6 +230,7 @@ environment variables to it:
 
 ```python
 import sys
+# "mcp" is the MCP Python SDK (installed alongside greenpick), not a greenpick module.
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -243,7 +244,8 @@ params = StdioServerParameters(
     },
 )
 
-# In Jupyter, errlog must be a real file (the notebook's stderr has no fileno()).
+# Keep errlog=: in Jupyter it must be a real file, because the notebook's stderr has no fileno()
+# (without it you get "UnsupportedOperation: fileno").
 with open("greenpick-server.log", "w") as errlog:
     async with stdio_client(params, errlog=errlog) as (read, write):
         async with ClientSession(read, write) as session:

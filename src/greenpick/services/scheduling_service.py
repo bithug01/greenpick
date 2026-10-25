@@ -37,6 +37,22 @@ def _hour_index(period: str) -> Optional[int]:
     return int(dt.timestamp() // 3600)          # absolute hours since epoch
 
 
+def hour_of_day(period: str) -> Optional[int]:
+    """0..23 hour-of-day for a period label (UTC for live ISO timestamps; mock 'H15' -> 15)."""
+    idx = _hour_index(period)
+    return None if idx is None else idx % 24
+
+
+def clock_label(period: str) -> str:
+    """Turn a past period into advice you can act on: '15:00 UTC' (live) or '15:00' (mock hours
+    carry no timezone). Recent history says WHEN IN THE DAY is cleanest — the date it happened on
+    is evidence, not a start date, so it's never the headline."""
+    hod = hour_of_day(period)
+    if hod is None:
+        return period
+    return f"{hod:02d}:00" if period.strip().startswith("H") else f"{hod:02d}:00 UTC"
+
+
 def _best_and_worst_window(series: list[HourlyCarbon], window_hours: int
                            ) -> tuple[Optional[list[HourlyCarbon]], Optional[float]]:
     """Slide a window of `window_hours` over the CHRONOLOGICALLY ordered series, considering only
@@ -114,20 +130,22 @@ async def cleanest_hours(
         win_hours, win_reduction = _best_and_worst_window(history, window_hours)
         if win_hours:
             avg = round(sum(h.g_co2_per_kwh for h in win_hours) / len(win_hours), 1)
+            start = win_hours[0].period
             advice.window = CleanestWindow(
-                window_hours=window_hours,
-                start_period=win_hours[0].period, end_period=win_hours[-1].period,
+                window_hours=window_hours, start_hour_of_day=hour_of_day(start),
+                start_period=start, end_period=win_hours[-1].period,
                 avg_g_co2_per_kwh=avg, hours=win_hours,
             )
             advice.window_reduction_pct = win_reduction
+            seen = f"(the cleanest {window_hours}h window in the recent data began {start})"
             if win_reduction is not None and win_reduction >= 10:
-                advice.note = (f"For a ~{window_hours}h job, start it at {win_hours[0].period}: that's "
-                               f"the cleanest {window_hours}h window (avg ~{avg:.0f} gCO2/kWh), "
-                               f"~{win_reduction:.0f}% cleaner than the worst {window_hours}h window.")
+                advice.note = (f"For a ~{window_hours}h job, start around {clock_label(start)} "
+                               f"{seen}: avg ~{avg:.0f} gCO2/kWh, ~{win_reduction:.0f}% cleaner than "
+                               f"the worst {window_hours}h window. A recent pattern, not a forecast.")
             else:
-                advice.note = (f"For a ~{window_hours}h job, the cleanest window starts at "
-                               f"{win_hours[0].period} (avg ~{avg:.0f} gCO2/kWh), but the grid is "
-                               f"fairly flat — timing won't help much here.")
+                advice.note = (f"For a ~{window_hours}h job, the cleanest start is around "
+                               f"{clock_label(start)} {seen}, avg ~{avg:.0f} gCO2/kWh, but the grid "
+                               f"is fairly flat — timing won't help much here.")
         else:
             advice.note = (f"Not enough contiguous history to find a {window_hours}h window; "
                            f"showing cleanest individual hours instead. " + advice.note)

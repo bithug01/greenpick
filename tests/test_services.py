@@ -1251,3 +1251,67 @@ def test_server_sends_instructions_that_lead_with_rightsizing():
     named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note"}
     registered = {t.name for t in asyncio.run(server.mcp.list_tools())}
     assert named <= registered, named - registered
+
+
+# --- 0.1.7: labelled percentages; start advice as a time of day, not a past date ---
+
+@pytest.mark.asyncio
+async def test_rightsizing_labels_cost_and_carbon_percentages_separately():
+    from greenpick.services import rightsizing_service
+    repo = MockCarbonRepository()
+    adv = await rightsizing_service.rightsizing_check(
+        repo, "aws", "us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15,
+    )
+    # Cost % is the bill saving; carbon % is the kg saving. They differ, so both are reported.
+    assert adv.cost_saving_pct == round(adv.monthly_usd_saving / adv.cost_now_usd_per_month * 100, 1)
+    assert adv.carbon_saving_pct == round(adv.monthly_kg_co2_saving / adv.carbon_now_kg_per_month * 100, 1)
+    assert adv.cost_saving_pct != adv.carbon_saving_pct
+    assert adv.saving_pct == adv.carbon_saving_pct                 # compatibility field unchanged
+    assert f"~{adv.cost_saving_pct:.0f}% cheaper" in adv.rationale
+    assert f"~{adv.carbon_saving_pct:.0f}% less carbon" in adv.rationale
+    assert "mock grid data" in adv.rationale                       # derived carbon carries its quality
+
+
+def test_clock_label_turns_past_periods_into_a_time_of_day():
+    from greenpick.services import scheduling_service as ss
+    assert ss.clock_label("2026-10-17T15") == "15:00 UTC"
+    assert ss.clock_label("2026-10-17T15:00Z") == "15:00 UTC"
+    assert ss.clock_label("H02") == "02:00"                       # mock hours have no timezone
+    assert ss.hour_of_day("2026-10-17T15") == 15
+
+
+@pytest.mark.asyncio
+async def test_window_advice_leads_with_time_of_day_not_a_date(monkeypatch):
+    from greenpick.services import scheduling_service as ss
+    from greenpick.models import HourlyCarbon
+
+    class Repo(MockCarbonRepository):
+        async def carbon_history(self, provider, region):
+            # Two past days; 15:00-19:00 is clean on the 17th.
+            out = []
+            for day in ("2026-10-17", "2026-10-18"):
+                for h in range(24):
+                    g = 60.0 if (day == "2026-10-17" and 15 <= h <= 19) else 200.0
+                    out.append(HourlyCarbon(period=f"{day}T{h:02d}", g_co2_per_kwh=g))
+            return out
+
+    adv = await ss.cleanest_hours(Repo(), "aws", "us-west-2", window_hours=5)
+    assert adv.window.start_hour_of_day == 15
+    assert adv.window.start_period == "2026-10-17T15"           # kept, as evidence
+    assert adv.note.startswith("For a ~5h job, start around 15:00 UTC")
+
+
+@pytest.mark.asyncio
+async def test_training_rationale_says_start_around_a_time():
+    from greenpick.services import training_service
+    repo = MockCarbonRepository()
+    adv = await training_service.estimate_training_carbon(
+        repo, gpu="a100", gpu_count=8, gpu_hours=40, region="us-east-1", provider="aws",
+    )
+    assert adv.cleanest_window is not None and adv.cleanest_window.start_hour_of_day is not None
+    assert f"start it around {adv.cleanest_window.start_hour_of_day:02d}:00" in adv.rationale
+
+
+def test_instructions_cover_derived_mock_figures():
+    from greenpick import server
+    assert "derived from them" in server.mcp.instructions
