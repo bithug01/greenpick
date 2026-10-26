@@ -18,6 +18,11 @@
     "NUC": "Nuclear", "WAT": "Hydro", "WND": "Wind", "SUN": "Solar",
     "GEO": "Geothermal", "BIO": "Biomass"
   },
+  "_comment_canada": "Maps Canadian operators' published source categories to the same per-fuel factors above. hq = Hydro-Québec open data (hydraulique/eolien/solaire/thermique/autres; Québec thermal is mostly oil/diesel, 'autres' is biomass/biogas/small hydro). ieso = Ontario IESO fuel types.",
+  "canada_fuel_to_factor": {
+    "hq":   { "hydraulique": 24, "eolien": 11, "solaire": 48, "thermique": 650, "autres": 230 },
+    "ieso": { "NUCLEAR": 12, "GAS": 490, "HYDRO": 24, "WIND": 11, "SOLAR": 48, "BIOFUEL": 230, "OTHER": 700 }
+  },
   "_comment_entsoe": "Maps ENTSO-E A75 psrType codes to the same per-fuel factors above, so the EU source reuses one emission-factor table. B-codes per ENTSO-E standard.",
   "entsoe_psrtype_to_factor": {
     "B01": 230, "B02": 820, "B03": 490, "B04": 490, "B05": 820, "B06": 650,

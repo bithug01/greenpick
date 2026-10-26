@@ -19,6 +19,8 @@ _ZONE_INTENSITY = {
     "SE": 25,
     "FI": 70,
     "AU-NSW": 580,
+    "CA-QC": 30,
+    "CA-ON": 80,
 }
 _DEFAULT = 400
 

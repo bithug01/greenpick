@@ -91,14 +91,24 @@ async def test_recommender_prefers_cleaner_region_and_respects_latency_budget():
     assert rec.candidates[0].carbon_rank == 1
     assert rec.limitations  # caveats always present
 
-    # Tight budget vs. a US baseline: nothing meaningfully greener fits, so it should
+    # Tight budget, US-only candidates: nothing meaningfully greener fits, so it should
     # stay on the baseline AND say so honestly (not dress the baseline up as a "win").
     rec_tight = await recommender.compare_regions(
         repo, None, user, wl, optimize_for="carbon",
         max_added_latency_ms=20, baseline_region="us-east-1",
+        regions=["us-east-1", "us-central1", "eastus"],
     )
     assert rec_tight.recommended_region == "aws/us-east-1"
     assert "reasonable" in rec_tight.rationale.lower() or "as good as it gets" in rec_tight.rationale.lower()
+
+    # Same tight budget with the whole catalog: Montreal (Québec hydro) is close enough and far
+    # cleaner, so the East Coast now has a real greener option.
+    rec_ca = await recommender.compare_regions(
+        repo, None, user, wl, optimize_for="carbon",
+        max_added_latency_ms=20, baseline_region="us-east-1",
+    )
+    assert rec_ca.recommended_region in ("aws/ca-central-1", "gcp/northamerica-northeast1",
+                                         "azure/canadaeast")
 
     # Wide budget: the clean-but-far region (Sweden, 25 gCO2) should now win over us-east-1.
     rec_wide = await recommender.compare_regions(
@@ -108,10 +118,12 @@ async def test_recommender_prefers_cleaner_region_and_respects_latency_budget():
     assert rec_wide.recommended_region == "aws/eu-north-1"
     assert "cleaner" in rec_wide.rationale.lower()
 
-    # Tolerance band: a +105ms option under a +100ms cap should NOT be excluded.
+    # Tolerance band: a +105ms option under a +100ms cap should NOT be excluded. (US-only, so a
+    # nearer clean region like Montreal doesn't pre-empt the band case being tested.)
     rec_band = await recommender.compare_regions(
         repo, None, user, wl, optimize_for="carbon",
         max_added_latency_ms=100, baseline_region="us-east-1",
+        regions=["us-east-1", "us-west-2", "us-central1"],
     )
     pick_band = next(c for c in rec_band.candidates
                      if f"{c.provider}/{c.region}" == rec_band.recommended_region)
@@ -1461,7 +1473,7 @@ def test_typical_file_covers_every_region_with_a_live_source():
     from greenpick.data.static_data import iter_regions
     for prov, reg, meta in iter_regions():
         entry = typical_entry(prov, reg)
-        if meta.get("eia_ba") or meta.get("entsoe_eic"):
+        if meta.get("eia_ba") or meta.get("entsoe_eic") or meta.get("ca_source"):
             assert entry is not None, f"{prov}/{reg} missing from typical.json"
             assert len(entry["months"]) == 12
             for m in entry["months"].values():
@@ -1595,3 +1607,117 @@ async def test_region_carbon_now_adds_context_only_to_live_readings(monkeypatch)
     monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
     fallback = await f(provider="aws", region="us-east-1")
     assert fallback["quality"] == "typical" and "vs_typical" not in fallback   # no self-comparison
+
+
+# --- 0.3.0: Canada — Hydro-Québec (Québec) and IESO (Ontario), live with no key ---
+
+from greenpick.data import canada_repository as ca
+from greenpick.data.canada_repository import CanadaRepository
+
+_IESO_XML = """<?xml version="1.0"?>
+<IMODocument xmlns="http://www.ieso.ca/schema"><IMODocBody><Date>2026-10-26</Date><Generators>
+<Generator><GeneratorName>N1</GeneratorName><FuelType>NUCLEAR</FuelType><Outputs>
+  <Output><Hour>1</Hour><EnergyMW>800</EnergyMW></Output>
+  <Output><Hour>2</Hour><EnergyMW>800</EnergyMW></Output>
+  <Output><Hour>3</Hour><EnergyMW></EnergyMW></Output></Outputs>
+  <Capabilities><Capability><Hour>1</Hour><EnergyMW>9999</EnergyMW></Capability></Capabilities></Generator>
+<Generator><GeneratorName>G1</GeneratorName><FuelType>GAS</FuelType><Outputs>
+  <Output><Hour>1</Hour><EnergyMW>200</EnergyMW></Output>
+  <Output><Hour>2</Hour><EnergyMW>0</EnergyMW></Output></Outputs></Generator>
+</Generators></IMODocBody></IMODocument>"""
+
+_IESO_YEARLY = """<?xml version="1.0"?>
+<Document xmlns="http://www.ieso.ca/schema"><DocBody><DailyData><Day>2026-01-01</Day>
+<HourlyData><Hour>1</Hour>
+  <FuelTotal><Fuel>NUCLEAR</Fuel><EnergyValue><Output>900</Output></EnergyValue></FuelTotal>
+  <FuelTotal><Fuel>WIND</Fuel><EnergyValue><Output>100</Output></EnergyValue></FuelTotal>
+</HourlyData></DailyData></DocBody></Document>"""
+
+
+def test_ieso_hours_are_eastern_standard_time_hour_ending():
+    # Hour-ending 1 EST on Oct 26 = 00:00-01:00 EST = 05:00 UTC. No DST shift in summer either.
+    assert ca.ieso_period("2026-10-26", 1) == "2026-10-26T05"
+    assert ca.ieso_period("2026-07-01", 24) == "2026-07-02T04"
+
+
+def test_ieso_live_report_sums_output_by_fuel_and_skips_unreported_hours():
+    hourly = ca.ieso_generators_to_hourly(_IESO_XML)
+    # Hour 1: 800 nuclear (12) + 200 gas (490) = (9600 + 98000) / 1000 = 107.6. Capabilities ignored.
+    assert hourly["2026-10-26T05"] == 107.6
+    assert hourly["2026-10-26T06"] == 12.0            # hour 2: all nuclear
+    assert "2026-10-26T07" not in hourly              # hour 3 not reported yet
+
+
+def test_ieso_yearly_file_parses_fuel_totals():
+    assert ca.ieso_fuel_hourly_to_hourly(_IESO_YEARLY) == {"2026-01-01T05": 11.9}   # (900*12+100*11)/1000
+
+
+def test_hydroquebec_rows_skip_unfilled_hours_and_use_utc():
+    rows = [
+        {"date": "2026-10-27T03:30:00+00:00", "valeurs_total": 0.0, "valeurs_hydraulique": None},
+        {"date": "2026-10-26T09:30:00+00:00", "valeurs_total": 1000.0, "valeurs_hydraulique": 900.0,
+         "valeurs_eolien": 100.0, "valeurs_solaire": 0.0, "valeurs_thermique": None, "valeurs_autres": 0.0},
+    ]
+    assert ca.hq_rows_to_hourly(rows) == {"2026-10-26T09": 22.7}      # (900*24+100*11)/1000
+    history = [{"date": "2026-01-01T04:00:00+00:00", "total": 10.0, "hydraulique": 10.0}]
+    assert ca.hq_rows_to_hourly(history, prefix="") == {"2026-01-01T04": 24.0}
+
+
+@pytest.mark.asyncio
+async def test_canada_repository_live_then_falls_back_to_typical(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "ieso" in request.url.host:
+            return httpx.Response(200, text=_IESO_XML)
+        return httpx.Response(503)                       # Hydro-Québec down
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: orig(transport=_mock_transport(handler)))
+    repo = CanadaRepository()
+    on = await repo.carbon_now("azure", "canadacentral")
+    assert (on.source, on.quality, on.timestamp, on.g_co2_per_kwh) == ("ieso", "live", "2026-10-26T06", 12.0)
+    hist = await repo.carbon_history("gcp", "northamerica-northeast2")
+    assert [h.period for h in hist] == ["2026-10-26T05", "2026-10-26T06"]
+    qc = await repo.carbon_now("aws", "ca-central-1")
+    assert qc.quality == "typical" and qc.source == "typical_hq"
+
+
+@pytest.mark.asyncio
+async def test_auto_routes_canadian_regions_without_a_key(monkeypatch):
+    from greenpick.data.auto_repository import AutoRepository
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.host)
+        return httpx.Response(200, text=_IESO_XML)
+
+    orig = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: orig(transport=_mock_transport(handler)))
+    r = await AutoRepository(eia_key="", entsoe_token="").carbon_now("azure", "canadacentral")
+    assert r.quality == "live" and calls and "ieso" in calls[0]
+
+
+def test_hint_for_canada_never_asks_for_a_key(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto"))
+    r = {"provider": "aws", "region": "ca-central-1", "quality": "typical", "source": "typical_hq"}
+    hint = data_hint.with_hint(r)["live_data_hint"]
+    assert "Hydro-Québec didn't return data for aws/ca-central-1" in hint
+    assert "key" not in hint.split("Hydro-Québec", 1)[1]
+
+
+def test_canada_regions_are_in_the_catalog_with_a_residency_label():
+    from greenpick.data.static_data import region_meta
+    from greenpick.services import residency_service
+    for prov, reg, src in (("aws", "ca-central-1", "hq"), ("gcp", "northamerica-northeast1", "hq"),
+                           ("gcp", "northamerica-northeast2", "ieso"), ("azure", "canadaeast", "hq"),
+                           ("azure", "canadacentral", "ieso")):
+        meta = region_meta(prov, reg)
+        assert meta["ca_source"] == src and meta["jurisdiction"] == "CA"
+    assert residency_service._LABEL["CA"] == "Canada"
+
+
+def test_montreal_is_a_greener_option_for_new_york():
+    from greenpick.services import latency_service
+    nyc = GeoPoint(lat=40.71, lon=-74.01)
+    added = (latency_service.estimate_latency_ms("aws", "ca-central-1", nyc)
+             - latency_service.estimate_latency_ms("aws", "us-east-1", nyc))
+    assert added < 15                                  # within an East Coast latency budget

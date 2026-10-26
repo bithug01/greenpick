@@ -21,6 +21,7 @@ _LABEL = {
     "EEA": "the EEA (EU + Norway/Iceland/Liechtenstein)",
     "US": "the United States",
     "AU": "Australia",
+    "CA": "Canada",
 }
 
 DISCLAIMER = ("GreenPick does NOT assess legal compliance - this is a geographic heads-up only. "

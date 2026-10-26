@@ -34,6 +34,7 @@ sys.path.insert(0, str(ROOT / "src"))
 import httpx  # noqa: E402
 
 from greenpick.config import SETTINGS  # noqa: E402  (also loads .env)
+from greenpick.data import canada_repository as canada  # noqa: E402
 from greenpick.data._net import describe_error  # noqa: E402
 from greenpick.data.entsoe_repository import ENTSOERepository  # noqa: E402
 from greenpick.data.static_data import emission_factors, iter_regions  # noqa: E402
@@ -129,6 +130,37 @@ async def entsoe_hourly(client: httpx.AsyncClient, eic: str, start: datetime, en
     return out
 
 
+# --- Canada (no key needed) -------------------------------------------------------------------
+
+HQ_HISTORY = ("https://donnees.hydroquebec.com/api/explore/v2.1/catalog/datasets/"
+              "historique-production-electricite-quebec")
+IESO_YEARLY = "https://reports-public.ieso.ca/public/GenOutputbyFuelHourly/PUB_GenOutputbyFuelHourly_{year}.xml"
+
+
+async def hq_hourly(client: httpx.AsyncClient) -> dict[str, float]:
+    """Hydro-Québec's history dataset (updated about once a year): the latest 12 months it has."""
+    latest = (await client.get(f"{HQ_HISTORY}/records",
+                               params={"limit": "1", "order_by": "date desc"})).json()["results"][0]["date"]
+    end = datetime.fromisoformat(latest)
+    start = end - timedelta(days=365)
+    resp = await client.get(f"{HQ_HISTORY}/exports/json", params={
+        "where": f"date >= '{start.isoformat()}' and date <= '{end.isoformat()}'",
+        "order_by": "date"})
+    resp.raise_for_status()
+    return canada.hq_rows_to_hourly(resp.json(), prefix="")
+
+
+async def ieso_hourly(client: httpx.AsyncClient, start: datetime, end: datetime) -> dict[str, float]:
+    """IESO's yearly by-fuel files for every year the window touches, trimmed to the window."""
+    out: dict[str, float] = {}
+    for year in range(start.year, end.year + 1):
+        resp = await client.get(IESO_YEARLY.format(year=year))
+        resp.raise_for_status()
+        out.update(canada.ieso_fuel_hourly_to_hourly(resp.text))
+    lo, hi = start.strftime("%Y-%m-%dT%H"), end.strftime("%Y-%m-%dT%H")
+    return {p: g for p, g in out.items() if lo <= p <= hi}
+
+
 # --- Aggregate ----------------------------------------------------------------------------------
 
 def summarise(hourly: dict[str, float]) -> dict:
@@ -165,7 +197,11 @@ async def build(regions: list[tuple[str, str, dict]]) -> dict:
         for prov, reg, meta in regions:
             t = time.monotonic()
             try:
-                if meta.get("eia_ba"):
+                if meta.get("ca_source") == "hq":
+                    source, hourly = "hq", await hq_hourly(client)
+                elif meta.get("ca_source") == "ieso":
+                    source, hourly = "ieso", await ieso_hourly(client, start, end)
+                elif meta.get("eia_ba"):
                     if not SETTINGS.eia_api_key:
                         log(f"  {prov}/{reg}: skipped (no EIA_API_KEY)"); continue
                     source, hourly = "eia", await eia_hourly(client, meta["eia_ba"], start, end)
@@ -188,20 +224,25 @@ async def build(regions: list[tuple[str, str, dict]]) -> dict:
     return results
 
 
+def zone_key(meta: dict):
+    """The grid a region draws from; regions sharing one are fetched once."""
+    return meta.get("eia_ba") or meta.get("entsoe_eic") or meta.get("ca_source")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--regions", nargs="*", help="provider/region list (default: all covered)")
     ap.add_argument("--dry-run", action="store_true", help="print results, don't write the file")
     args = ap.parse_args()
 
-    covered = [(p, r, m) for p, r, m in iter_regions() if m.get("eia_ba") or m.get("entsoe_eic")]
+    covered = [(p, r, m) for p, r, m in iter_regions() if zone_key(m)]
     if args.regions:
         wanted = set(args.regions)
         covered = [t for t in covered if f"{t[0]}/{t[1]}" in wanted]
     # Regions sharing a grid zone (e.g. aws/us-west-2 and gcp/us-west1) need fetching once.
     by_zone: dict[str, tuple[str, str, dict]] = {}
     for t in covered:
-        by_zone.setdefault(t[2].get("eia_ba") or t[2].get("entsoe_eic"), t)
+        by_zone.setdefault(zone_key(t[2]), t)
     log(f"Fetching 12 months for {len(by_zone)} grid zone(s) covering {len(covered)} region(s)...")
     fetched = asyncio.run(build(list(by_zone.values())))
 
@@ -210,10 +251,10 @@ def main() -> None:
     for prov, regs in fetched.items():
         for reg, entry in regs.items():
             meta = next(m for p, r, m in covered if p == prov and r == reg)
-            zone_result[meta.get("eia_ba") or meta.get("entsoe_eic")] = entry
+            zone_result[zone_key(meta)] = entry
     new_regions: dict = {}
     for prov, reg, meta in covered:
-        entry = zone_result.get(meta.get("eia_ba") or meta.get("entsoe_eic"))
+        entry = zone_result.get(zone_key(meta))
         if entry:
             new_regions.setdefault(prov, {})[reg] = entry
 

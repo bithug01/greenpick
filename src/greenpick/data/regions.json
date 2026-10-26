@@ -6,16 +6,21 @@
     "us-west-2":      { "name": "Oregon",        "lat": 45.87, "lon": -119.69, "zone": "US-NW-PACW", "eia_ba": "BPAT", "jurisdiction": "US" },
     "eu-west-1":      { "name": "Ireland",       "lat": 53.41, "lon": -8.24,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C", "jurisdiction": "EEA" },
     "eu-north-1":     { "name": "Stockholm",     "lat": 59.33, "lon": 18.07,  "zone": "SE", "entsoe_eic": "10YSE-1--------K", "jurisdiction": "EEA" },
-    "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW", "jurisdiction": "AU" }
+    "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW", "jurisdiction": "AU" },
+    "ca-central-1":   { "name": "Montreal",      "lat": 45.50, "lon": -73.57, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" }
   },
   "gcp": {
     "us-central1":    { "name": "Iowa",          "lat": 41.26, "lon": -95.86, "zone": "US-MIDW-MISO", "eia_ba": "MISO", "jurisdiction": "US" },
     "europe-north1":  { "name": "Finland",       "lat": 60.57, "lon": 27.19,  "zone": "FI", "entsoe_eic": "10YFI-1--------U", "jurisdiction": "EEA" },
-    "us-west1":       { "name": "Oregon",        "lat": 45.60, "lon": -121.18, "zone": "US-NW-PACW", "eia_ba": "BPAT", "jurisdiction": "US" }
+    "us-west1":       { "name": "Oregon",        "lat": 45.60, "lon": -121.18, "zone": "US-NW-PACW", "eia_ba": "BPAT", "jurisdiction": "US" },
+    "northamerica-northeast1": { "name": "Montreal", "lat": 45.50, "lon": -73.57, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" },
+    "northamerica-northeast2": { "name": "Toronto",  "lat": 43.65, "lon": -79.38, "zone": "CA-ON", "ca_source": "ieso", "jurisdiction": "CA" }
   },
   "azure": {
     "eastus":         { "name": "Virginia",      "lat": 37.37, "lon": -79.82, "zone": "US-MIDA-PJM", "eia_ba": "PJM", "jurisdiction": "US" },
     "northeurope":    { "name": "Ireland",       "lat": 53.35, "lon": -6.26,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C", "jurisdiction": "EEA" },
-    "swedencentral":  { "name": "Sweden",        "lat": 60.67, "lon": 17.14,  "zone": "SE", "entsoe_eic": "10YSE-1--------K", "jurisdiction": "EEA" }
+    "swedencentral":  { "name": "Sweden",        "lat": 60.67, "lon": 17.14,  "zone": "SE", "entsoe_eic": "10YSE-1--------K", "jurisdiction": "EEA" },
+    "canadaeast":     { "name": "Quebec City",   "lat": 46.81, "lon": -71.21, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" },
+    "canadacentral":  { "name": "Toronto",       "lat": 43.65, "lon": -79.38, "zone": "CA-ON", "ca_source": "ieso", "jurisdiction": "CA" }
   }
 }

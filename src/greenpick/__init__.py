@@ -4,7 +4,7 @@ Greener cloud-region choices with honest carbon + cost + latency tradeoffs,
 delivered inside the vibe-coding loop. Directional guidance, not audited accounting.
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 # httpx logs every request URL at INFO, and our live sources pass their API key / token as a URL
 # query parameter — so at the default log level the secret would land in the MCP client's logs.

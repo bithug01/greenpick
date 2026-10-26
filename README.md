@@ -22,7 +22,8 @@ environment (Cursor / Claude Code / Kiro). Ask it where to deploy, when to run a
 right-size — and it answers with an honest **carbon + cost + latency** tradeoff, in-editor, in
 seconds. (It responds when you ask; auto-nudging on infra-code changes is on the roadmap.)
 
-> **Status: working — 15 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
+> **Status: working — 15 tools.** Live carbon for US (EIA-930), EU (ENTSO-E) and Canada (Hydro-Québec,
+> IESO — no key needed), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
 > GPU-training **and LLM-inference** carbon, right-sizing, serving-pattern and data-locality/residency
 > checks — all shipped. Offline or without API keys, falls back to clearly-labelled *typical* values:
@@ -157,6 +158,9 @@ See `docs/user-questions-backlog.md`.
 
 - **EIA-930** (US balancing authorities) and **ENTSO-E** (EU zones) — live grid carbon,
   auto-routed by region. Both also drive `cleanest_hours_to_run` from recent hourly history.
+- **Hydro-Québec** (Montreal / Québec City regions) and **IESO** (Toronto regions) — live hourly
+  generation by source, public, **no key needed**. Hydro-Québec figures arrive 1.5–6 h late, so the
+  latest complete hour is used and its timestamp shown.
 - **Typical** — the offline default and fallback: for each region, this calendar month's average
   intensity and average hour-of-day profile (UTC), computed from 12 months of real hourly EIA-930 /
   ENTSO-E data (`data/typical.json`, refreshed by `scripts/refresh_typical.py`). Labelled
@@ -208,6 +212,7 @@ Connect it to an MCP client (e.g. Kiro / Claude Code / Cursor) by pointing the c
 GreenPick runs on labelled typical values until you give it two free keys:
 [EIA](https://www.eia.gov/opendata/register.php) (US grid) and
 [ENTSO-E](https://transparency.entsoe.eu/) (EU grid). Pass them as environment variables.
+Canadian regions are live with just `GREENPICK_CARBON_SOURCE=auto` — their sources need no key.
 (A `.env` file works for a source checkout; if you installed with `pip install greenpick`, use one
 of the options below.)
 

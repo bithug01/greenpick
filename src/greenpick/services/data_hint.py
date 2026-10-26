@@ -91,6 +91,9 @@ def _reason(provider: str, region: str) -> tuple[str, str]:
             return needs("EIA_API_KEY", s.eia_api_key, "EIA")
         if meta.get("entsoe_eic"):
             return needs("ENTSOE_TOKEN", s.entsoe_token, "ENTSO-E")
+        if meta.get("ca_source"):
+            from ..data.canada_repository import LABEL
+            return "unavailable", LABEL[meta["ca_source"]]     # no key needed: it just didn't answer
         return "uncovered", ""
     if src == "eia":
         return needs("EIA_API_KEY", s.eia_api_key, "EIA") if meta.get("eia_ba") else ("wrong_source", "EIA (US only)")
@@ -139,13 +142,14 @@ def build_hint(result: dict) -> Optional[str]:
             parts.append(
                 "GreenPick isn't set up for live data (GREENPICK_CARBON_SOURCE is unset or 'mock'). For "
                 "live data, set GREENPICK_CARBON_SOURCE=auto plus a free EIA_API_KEY (US) and/or "
-                f"ENTSOE_TOKEN (EU) in the server's environment: {TURN_ON_URL}")
+                f"ENTSOE_TOKEN (EU) in the server's environment (Canada needs no key): {TURN_ON_URL}")
         elif reason == "no_key":
             parts.append(f"For live data{where}, set {detail} (free: {_KEYS[detail]}) in the server's "
                          f"environment: {TURN_ON_URL}")
         elif reason == "unavailable":
+            key_txt = "" if detail in ("Hydro-Québec", "IESO") else ", or check that the key is valid"
             parts.append(f"{detail} didn't return data{where} just now, so GreenPick used its fallback. "
-                         "Try again later, or check that the key is valid.")
+                         f"Try again later{key_txt}.")
         elif reason == "wrong_source":
             parts.append(f"GREENPICK_CARBON_SOURCE is set to {detail}, which doesn't cover "
                          f"{_names(locs) or 'this region'}. Use GREENPICK_CARBON_SOURCE=auto to route "
