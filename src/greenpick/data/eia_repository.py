@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import httpx
 
 from ..models import CarbonReading, Provider, HourlyCarbon
-from .mock_repository import MockCarbonRepository
+from .typical_repository import TypicalCarbonRepository
 from .static_data import region_meta, emission_factors
 from ._net import REQUEST_TIMEOUT, REQUEST_DEADLINE_S, describe_error
 
@@ -36,7 +36,7 @@ class EIARepository:
         self._key = api_key
         self._ttl = cache_ttl_seconds
         self._cache: dict[str, tuple[float, CarbonReading]] = {}  # BA -> (fetched_at, reading)
-        self._fallback = MockCarbonRepository()
+        self._fallback = TypicalCarbonRepository()
         self._warned_no_key = False
 
     async def carbon_now(self, provider: Provider, region: str) -> CarbonReading:

@@ -58,7 +58,16 @@ async def carbon_forecast(
 
     # --- Degrade: no forward forecast for this region -> recent historical daily pattern ---
     pattern = await scheduling_service.cleanest_time_of_day(repo, provider, region)
-    if pattern.quality == "mock":
+    if pattern.quality == "typical":
+        # No live history: the pattern is this month's typical day from last year's real data.
+        source, quality = "typical", "typical"
+        note = ("No day-ahead forecast or live history is available for this region, so this is "
+                "the TYPICAL daily pattern for this month (averaged from last year's data), not a "
+                "forecast. ")
+        if pattern.cleanest_hour_of_day is not None:
+            note += (f"A typical day here is cleanest around {pattern.cleanest_hour_of_day:02d}:00 "
+                     f"UTC - a reasonable default for a recurring job.")
+    elif pattern.quality == "mock":
         # No live history either: the "pattern" is GreenPick's illustrative mock curve. Label it
         # mock — calling it 'historical' would pass a synthetic shape off as real past data.
         source, quality = "mock", "mock"

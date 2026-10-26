@@ -161,7 +161,7 @@ async def test_em_bad_token_falls_back_to_mock(monkeypatch):
                         lambda *a, **k: orig(transport=_mock_transport(handler)))
     repo = ElectricityMapsRepository(token="bad")
     r = await repo.carbon_now("aws", "eu-north-1")
-    assert r.quality == "mock"          # degrades, labelled honestly
+    assert r.quality == "typical"          # degrades, labelled honestly
     assert repo._token_rejected is True  # won't keep hammering a bad key
 
 
@@ -169,7 +169,7 @@ async def test_em_bad_token_falls_back_to_mock(monkeypatch):
 async def test_em_no_token_uses_mock():
     repo = ElectricityMapsRepository(token="")
     r = await repo.carbon_now("aws", "eu-north-1")
-    assert r.quality == "mock"
+    assert r.quality == "typical"
 
 
 # --- EIA repository: fuel-mix -> carbon-intensity math, verified without a real key/network ---
@@ -203,14 +203,14 @@ async def test_eia_mix_to_carbon_intensity(monkeypatch):
 async def test_eia_non_us_region_falls_back_to_mock():
     repo = EIARepository(api_key="key")
     r = await repo.carbon_now("aws", "eu-north-1")     # no eia_ba -> mock
-    assert r.quality == "mock"
+    assert r.quality == "typical"
 
 
 @pytest.mark.asyncio
 async def test_eia_no_key_uses_mock():
     repo = EIARepository(api_key="")
     r = await repo.carbon_now("aws", "us-east-1")
-    assert r.quality == "mock"
+    assert r.quality == "typical"
 
 
 # --- ENTSO-E repository: A75 XML -> carbon intensity, verified without token/network ---
@@ -261,7 +261,7 @@ async def test_entsoe_xml_to_carbon_intensity(monkeypatch):
 async def test_entsoe_non_eu_region_falls_back_to_mock():
     repo = ENTSOERepository(token="tok")
     r = await repo.carbon_now("aws", "us-east-1")    # no entsoe_eic -> mock
-    assert r.quality == "mock"
+    assert r.quality == "typical"
 
 
 # Multi-hour A75: hour 18 nuclear-heavy (cleaner), hour 19 gas-heavy (dirtier).
@@ -1193,7 +1193,7 @@ async def test_eia_key_never_appears_in_logs(monkeypatch, caplog):
     monkeypatch.setattr(httpx, "AsyncClient",
                         lambda *a, **k: orig(transport=_mock_transport(handler)))
     r = await EIARepository(api_key=secret).carbon_now("aws", "us-east-1")
-    assert r.quality == "mock"
+    assert r.quality == "typical"
     assert secret not in caplog.text
 
 
@@ -1210,7 +1210,7 @@ async def test_entsoe_token_never_appears_in_logs(monkeypatch, caplog):
                         lambda *a, **k: orig(transport=_mock_transport(handler)))
     monkeypatch.setattr("greenpick.data.entsoe_repository.asyncio.sleep", _no_sleep)
     r = await ENTSOERepository(token=secret).carbon_now("aws", "eu-north-1")
-    assert r.quality == "mock"
+    assert r.quality == "typical"
     assert secret not in caplog.text
 
 
@@ -1233,7 +1233,7 @@ async def test_entsoe_slow_upstream_is_bounded(monkeypatch):
     monkeypatch.setattr(er, "_FETCH_BUDGET_S", 1.0)
     start = _time.monotonic()
     r = await ENTSOERepository(token="t").carbon_now("aws", "eu-north-1")
-    assert r.quality == "mock"                    # degraded to the labelled fallback...
+    assert r.quality == "typical"                    # degraded to the labelled fallback...
     assert _time.monotonic() - start < 3.0        # ...within the budget, not 30s+
 
 
@@ -1256,7 +1256,7 @@ async def test_entsoe_remembers_an_outage(monkeypatch):
     # Same zone again (now, and as history): skipped immediately, no new upstream calls.
     again = await repo.carbon_now("aws", "eu-north-1")
     await repo.carbon_history("aws", "eu-north-1")
-    assert again.quality == "mock"
+    assert again.quality == "typical"
     assert calls["n"] == after_first
 
 
@@ -1361,7 +1361,7 @@ def _mock(provider, region):
 def test_hint_when_greenpick_is_set_to_mock(monkeypatch):
     monkeypatch.setattr(_config, "SETTINGS", _settings(source="mock"))
     hint = data_hint.with_hint(_mock("aws", "us-east-1"))["live_data_hint"]
-    assert "typical value for each grid, not a current reading" in hint
+    assert "hand-set illustrative value" in hint
     assert "GREENPICK_CARBON_SOURCE=auto" in hint and data_hint.TURN_ON_URL in hint
 
 
@@ -1449,3 +1449,98 @@ async def test_egress_and_serving_label_their_carbon_quality():
     hubs = [ServingHub(name="us", lat=0, lon=0, share=0.5), ServingHub(name="eu", lat=0, lon=0, share=0.5)]
     sv = await serving_service.serving_pattern(repo, hubs, Workload(vcpu=1, ram_gb=2))
     assert sv.multi_region and all(c.carbon_quality == "mock" for c in sv.multi_region)
+
+
+# --- 0.2.0: the fallback is a typical month from a year of real data; mock only where uncovered ---
+
+from datetime import datetime as _dt, timezone as _tz
+from greenpick.data.typical_repository import TypicalCarbonRepository, typical_entry
+
+
+def test_typical_file_covers_every_region_with_a_live_source():
+    from greenpick.data.static_data import iter_regions
+    for prov, reg, meta in iter_regions():
+        entry = typical_entry(prov, reg)
+        if meta.get("eia_ba") or meta.get("entsoe_eic"):
+            assert entry is not None, f"{prov}/{reg} missing from typical.json"
+            assert len(entry["months"]) == 12
+            for m in entry["months"].values():
+                assert len(m["hourly_utc"]) == 24
+        else:
+            assert entry is None          # e.g. Sydney: no free source -> stays mock
+
+
+@pytest.mark.asyncio
+async def test_typical_reading_is_this_months_real_average():
+    repo = TypicalCarbonRepository()
+    r = await repo.carbon_now("aws", "us-east-1")
+    month = typical_entry("aws", "us-east-1")["months"][str(_dt.now(_tz.utc).month)]
+    assert r.quality == "typical" and r.source == "typical_eia"
+    assert r.g_co2_per_kwh == month["avg_g_co2_per_kwh"]
+    eu = await repo.carbon_now("aws", "eu-north-1")
+    assert eu.quality == "typical" and eu.source == "typical_entsoe"
+
+
+@pytest.mark.asyncio
+async def test_uncovered_region_still_falls_back_to_mock():
+    repo = TypicalCarbonRepository()
+    r = await repo.carbon_now("aws", "ap-southeast-2")
+    assert r.quality == "mock"
+    hist = await repo.carbon_history("aws", "ap-southeast-2")
+    assert hist and hist[0].period.startswith("H") and not hist[0].period.endswith("Z")
+
+
+@pytest.mark.asyncio
+async def test_typical_history_is_the_months_real_profile_in_utc():
+    from greenpick.services import scheduling_service as ss
+    repo = TypicalCarbonRepository()
+    hist = await repo.carbon_history("aws", "us-east-1")
+    month = typical_entry("aws", "us-east-1")["months"][str(_dt.now(_tz.utc).month)]
+    assert [h.g_co2_per_kwh for h in hist] == [g for g in month["hourly_utc"] if g is not None]
+    assert hist[0].period == "H00Z"
+    assert ss.clock_label("H15Z") == "15:00 UTC" and ss.hour_of_day("H15Z") == 15
+
+
+@pytest.mark.asyncio
+async def test_timing_advice_on_typical_data_says_what_it_is():
+    from greenpick.services import scheduling_service as ss
+    repo = TypicalCarbonRepository()
+    tod = await ss.cleanest_time_of_day(repo, "aws", "us-east-1")
+    assert tod.quality == "typical"
+    assert tod.note.startswith("In a typical day this month") and "UTC" in tod.note
+    win = await ss.cleanest_hours(repo, "aws", "us-west-2", window_hours=4)
+    if win.window_reduction_pct and win.window_reduction_pct >= 10:
+        assert "typical day" in win.note and "UTC" in win.note
+
+
+def test_small_absolute_gap_is_called_out():
+    from greenpick.services import scheduling_service as ss
+    assert "already very low-carbon" in ss.small_gap_note(15.0, 21.0)     # Sweden-style
+    oregon = ss.small_gap_note(87.0, 104.0)                             # small gap, not "very low"
+    assert "saves little" in oregon and "very low-carbon" not in oregon
+    assert ss.small_gap_note(300.0, 400.0) == ""                        # a real swing
+
+
+@pytest.mark.asyncio
+async def test_forecast_fallback_on_typical_data_is_labelled_typical():
+    from greenpick.services import forecast_service
+    adv = await forecast_service.carbon_forecast(TypicalCarbonRepository(), "aws", "us-east-1")
+    assert adv.quality == "typical" and adv.source == "typical"
+    assert "TYPICAL daily pattern" in adv.note
+
+
+def test_hint_explains_typical_data(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="mock"))
+    r = {"provider": "aws", "region": "us-east-1", "quality": "typical", "source": "typical_eia",
+         "cleanest": []}
+    hint = data_hint.with_hint(r)["live_data_hint"]
+    assert "this month's average for each grid, computed from a year of real hourly data" in hint
+    assert "Mock figures" not in hint
+    assert "this month's average day (UTC)" in hint
+    assert "GREENPICK_CARBON_SOURCE=auto" in hint
+
+
+def test_default_repository_is_typical(monkeypatch):
+    from greenpick import data as data_pkg
+    monkeypatch.setattr(data_pkg, "SETTINGS", _settings(source="mock"))
+    assert isinstance(data_pkg.get_repository(), TypicalCarbonRepository)

@@ -1,17 +1,18 @@
 """Tell the user WHY a result isn't live, and how to turn live data on.
 
-A tool result labelled `quality: "mock"` is honest, but on its own it reads like "this is all
-GreenPick does". The server log explains the cause ("No EIA_API_KEY set ..."), but MCP clients
-don't show server logs to users. So any result that leans on mock data gets a top-level
-`live_data_hint`, worded for the actual cause:
+A fallback label (`quality: "typical"` or `"mock"`) is honest, but on its own it reads like "this
+is all GreenPick does". The server log explains the cause ("No EIA_API_KEY set ..."), but MCP
+clients don't show server logs to users. So any result that leans on fallback data gets a
+top-level `live_data_hint`, explaining what the fallback is and worded for the actual cause:
 
 - GreenPick is configured for mock data (the default)      -> how to switch on live data
 - the region's source needs a key that isn't set            -> which key, where to get it free
 - the key is set but the source didn't answer / refused it  -> try later or check the key
 - no free live source covers the region                     -> mock is the best available
 
-Mock values are a typical figure per grid, not a current reading; mock HOURLY patterns are
-illustrative, so timing advice built on them isn't meaningful. The hint says so.
+'typical' is this month's average (and average day) from a year of real data — a realistic norm.
+'mock' is a hand-set illustrative value, used only where GreenPick has no real data; its hourly
+pattern is synthetic, so timing advice built on it isn't meaningful. The hint says which applies.
 """
 from __future__ import annotations
 
@@ -52,23 +53,27 @@ def _walk(obj: Any) -> Iterator[dict]:
             yield from _walk(v)
 
 
-def _scan(result: dict) -> tuple[set[tuple[str, str]], bool, bool]:
-    """Regions whose figures are mock, whether any mock figure had no locatable region, and
-    whether mock data fed timing advice."""
-    regions: set[tuple[str, str]] = set()
+_FALLBACK = ("typical", "mock")
+
+
+def _scan(result: dict) -> tuple[dict[str, set[tuple[str, str]]], bool, set[str]]:
+    """For each fallback kind ('typical' / 'mock'): the regions whose figures use it; whether any
+    such figure had no locatable region; and which kinds fed timing advice."""
+    regions: dict[str, set[tuple[str, str]]] = {k: set() for k in _FALLBACK}
     unlocated = False
-    timing = False
+    timing: set[str] = set()
     for d in _walk(result):
-        mock_keys = [k for k in _QUALITY_KEYS if d.get(k) == "mock"]
-        if not mock_keys:
+        hits = [(key, d[key]) for key in _QUALITY_KEYS if d.get(key) in _FALLBACK]
+        if not hits:
             continue
         loc = _location(d)
-        if loc:
-            regions.add(loc)
-        else:
-            unlocated = True
-        if "timing_quality" in mock_keys or any(k in d for k in _TIMING_KEYS):
-            timing = True
+        for key, kind in hits:
+            if loc:
+                regions[kind].add(loc)
+            else:
+                unlocated = True
+            if key == "timing_quality" or any(k in d for k in _TIMING_KEYS):
+                timing.add(kind)
     return regions, unlocated, timing
 
 
@@ -101,14 +106,29 @@ def _names(locs: list[tuple[str, str]]) -> str:
     return ", ".join(f"{p}/{r}" for p, r in sorted(locs))
 
 
+def _typical_sentence(locs: set[tuple[str, str]]) -> str:
+    from ..data.typical_repository import typical_entry
+    spans = sorted({(e["from"][:7], e["to"][:7]) for e in (typical_entry(p, r) for p, r in locs) if e})
+    span = f" ({spans[0][0]} to {spans[0][1]})" if len(spans) == 1 else ""
+    return ("Typical figures here are this month's average for each grid, computed from a year of "
+            f"real hourly data{span} — a realistic norm, not a current reading.")
+
+
 def build_hint(result: dict) -> Optional[str]:
-    regions, unlocated, timing = _scan(result)
-    if not regions and not unlocated:
+    by_kind, unlocated, timing = _scan(result)
+    all_locs = by_kind["typical"] | by_kind["mock"]
+    if not all_locs and not unlocated:
         return None
 
-    parts = ["Mock carbon figures here are a typical value for each grid, not a current reading."]
+    parts = []
+    if by_kind["typical"]:
+        parts.append(_typical_sentence(by_kind["typical"]))
+    if by_kind["mock"] or (unlocated and not by_kind["typical"]):
+        where = f" for {_names(list(by_kind['mock']))}" if by_kind["mock"] else ""
+        parts.append(f"Mock figures{where} are a hand-set illustrative value for the grid, used where "
+                     "GreenPick has no real data — not a current reading.")
     groups: dict[tuple[str, str], list[tuple[str, str]]] = {}
-    for loc in regions:
+    for loc in all_locs:
         groups.setdefault(_reason(*loc), []).append(loc)
     if unlocated and not groups:
         groups[_reason("", "")] = []
@@ -117,8 +137,8 @@ def build_hint(result: dict) -> Optional[str]:
         where = f" for {_names(locs)}" if locs else ""
         if reason == "setting":
             parts.append(
-                "GreenPick is set to mock data (GREENPICK_CARBON_SOURCE is unset or 'mock'). For live "
-                "data, set GREENPICK_CARBON_SOURCE=auto plus a free EIA_API_KEY (US) and/or "
+                "GreenPick isn't set up for live data (GREENPICK_CARBON_SOURCE is unset or 'mock'). For "
+                "live data, set GREENPICK_CARBON_SOURCE=auto plus a free EIA_API_KEY (US) and/or "
                 f"ENTSOE_TOKEN (EU) in the server's environment: {TURN_ON_URL}")
         elif reason == "no_key":
             parts.append(f"For live data{where}, set {detail} (free: {_KEYS[detail]}) in the server's "
@@ -131,16 +151,19 @@ def build_hint(result: dict) -> Optional[str]:
                          f"{_names(locs) or 'this region'}. Use GREENPICK_CARBON_SOURCE=auto to route "
                          "each region to its own live source.")
         elif reason == "uncovered":
-            parts.append(f"No free live source covers {_names(locs)} yet, so mock is the best "
-                         "available there.")
-    if timing:
-        parts.append("The hourly pattern in mock data is illustrative, so timing advice (cleanest "
-                     "hours, start windows, % reductions) isn't meaningful until live data is on.")
+            parts.append(f"No free live source covers {_names(locs)} yet, so GreenPick uses its "
+                         "fallback there.")
+    if "typical" in timing:
+        parts.append("Timing advice from typical data reflects this month's average day (UTC), a "
+                     "reasonable guide, but today's grid can differ — live data gives the real hours.")
+    if "mock" in timing:
+        parts.append("The hourly pattern in mock data is illustrative, so timing advice built on it "
+                     "(cleanest hours, start windows, % reductions) isn't meaningful.")
     return " ".join(parts)
 
 
 def with_hint(result: dict) -> dict:
-    """Add `live_data_hint` to a tool result that uses mock data; leave others unchanged."""
+    """Add `live_data_hint` to a tool result that uses fallback data; leave others unchanged."""
     hint = build_hint(result)
     if hint:
         result["live_data_hint"] = hint

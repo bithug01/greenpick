@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 Provider = Literal["aws", "gcp", "azure"]
 DataQuality = Literal[
-    "live", "live_estimated", "cached", "annual_average", "mock", "forecast", "historical",
+    "live", "live_estimated", "cached", "annual_average", "typical", "mock", "forecast", "historical",
 ]
 
 

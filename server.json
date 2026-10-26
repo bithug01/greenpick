@@ -7,13 +7,13 @@
     "url": "https://github.com/bithug01/greenpick",
     "source": "github"
   },
-  "version": "0.1.8",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "greenpick",
-      "version": "0.1.8",
+      "version": "0.2.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -21,7 +21,7 @@
       "environmentVariables": [
         {
           "name": "GREENPICK_CARBON_SOURCE",
-          "description": "Carbon data source: 'auto' (US->EIA, EU->ENTSO-E, else mock), 'mock', 'eia', 'entsoe', or 'electricitymaps'. Defaults to mock (offline, no keys).",
+          "description": "Carbon data source: 'auto' (US->EIA, EU->ENTSO-E live), 'mock' (offline: typical monthly values from a year of real data), 'eia', 'entsoe', or 'electricitymaps'. Defaults to offline.",
           "default": "mock"
         },
         {

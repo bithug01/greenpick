@@ -21,8 +21,9 @@ def _hour_index(period: str) -> Optional[int]:
     Handles ISO hours ('2026-10-12T18' / '2026-10-12T18:00') and mock labels ('H18').
     Returns None if unrecognised (such a point can't anchor a window)."""
     p = period.strip()
-    if p.startswith("H") and p[1:].isdigit():
-        return int(p[1:])                       # mock: H00..H23, already sequential
+    hod = p[1:].rstrip("Z")
+    if p.startswith("H") and hod.isdigit():
+        return int(hod)                         # mock H00..H23 / typical H00Z..H23Z: one day, sequential
     iso = p if len(p) > 13 else p + ":00:00"    # '...T18' -> '...T18:00:00'
     iso = iso.replace("Z", "+00:00")
     try:
@@ -50,7 +51,38 @@ def clock_label(period: str) -> str:
     hod = hour_of_day(period)
     if hod is None:
         return period
-    return f"{hod:02d}:00" if period.strip().startswith("H") else f"{hod:02d}:00 UTC"
+    p = period.strip()
+    if p.startswith("H") and not p.endswith("Z"):
+        return f"{hod:02d}:00"                  # mock hours carry no timezone
+    return f"{hod:02d}:00 UTC"
+
+
+def window_basis(start: str, window_hours: int) -> tuple[str, str]:
+    """(where the window came from, what kind of evidence it is) for a window's start period."""
+    p = start.strip()
+    if p.startswith("H") and p.endswith("Z"):
+        return (f"(the cleanest {window_hours}h window in this month's typical day)",
+                "A typical pattern for this month from last year's data, not a forecast.")
+    if p.startswith("H"):
+        return (f"(the cleanest {window_hours}h window in GreenPick's illustrative mock pattern)",
+                "Illustrative only — not meaningful for scheduling.")
+    return (f"(the cleanest {window_hours}h window in the recent data began {start})",
+            "A recent pattern, not a forecast.")
+
+
+# Below this absolute gap (gCO2/kWh) between the best and worst time, timing saves little in
+# practice even when the percentage looks large — e.g. Sweden swinging 15 -> 21 is "37%".
+SMALL_GAP_G_CO2 = 20.0
+VERY_LOW_G_CO2 = 60.0     # only call a grid "very low-carbon" below this (Sweden ~20, not Oregon ~90)
+
+
+def small_gap_note(lo: float, hi: float) -> str:
+    """A caveat when a big % swing is only a few grams, because the grid is already very clean."""
+    gap = hi - lo
+    if gap >= SMALL_GAP_G_CO2:
+        return ""
+    why = " — this grid is already very low-carbon," if hi < VERY_LOW_G_CO2 else ","
+    return f" In absolute terms that's only ~{gap:.0f} gCO2/kWh{why} so timing saves little in practice."
 
 
 def _best_and_worst_window(series: list[HourlyCarbon], window_hours: int
@@ -113,7 +145,7 @@ async def cleanest_hours(
     if reduction is not None and reduction >= 10:
         note = (f"Running during the cleanest hour instead of the dirtiest cuts this region's grid "
                 f"carbon by ~{reduction:.0f}%. Good candidate for time-shifting deferrable work "
-                f"(batch jobs, ETL, backups, training).")
+                f"(batch jobs, ETL, backups, training)." + small_gap_note(lo, hi))
     else:
         note = ("This region's grid carbon is fairly flat over the window — time-shifting here "
                 "won't help much; focus on region choice instead.")
@@ -137,11 +169,13 @@ async def cleanest_hours(
                 avg_g_co2_per_kwh=avg, hours=win_hours,
             )
             advice.window_reduction_pct = win_reduction
-            seen = f"(the cleanest {window_hours}h window in the recent data began {start})"
+            seen, kind = window_basis(start, window_hours)
             if win_reduction is not None and win_reduction >= 10:
+                worst = avg / (1 - win_reduction / 100) if win_reduction < 100 else avg
                 advice.note = (f"For a ~{window_hours}h job, start around {clock_label(start)} "
                                f"{seen}: avg ~{avg:.0f} gCO2/kWh, ~{win_reduction:.0f}% cleaner than "
-                               f"the worst {window_hours}h window. A recent pattern, not a forecast.")
+                               f"the worst {window_hours}h window. {kind}"
+                               + small_gap_note(avg, worst))
             else:
                 advice.note = (f"For a ~{window_hours}h job, the cleanest start is around "
                                f"{clock_label(start)} {seen}, avg ~{avg:.0f} gCO2/kWh, but the grid "
@@ -211,14 +245,22 @@ async def cleanest_time_of_day(
                  if dirtiest.avg_g_co2_per_kwh > 0 else None)
 
     n_days = max(1, len(days))
-    if reduction is not None and reduction >= 10:
-        note = (f"Over the last ~{n_days} day(s), this region is consistently cleanest around "
-                f"{cleanest.hour_of_day:02d}:00 (avg ~{cleanest.avg_g_co2_per_kwh:.0f} gCO2/kWh) and "
-                f"dirtiest around {dirtiest.hour_of_day:02d}:00 - ~{reduction:.0f}% apart. For a "
-                f"recurring job, standing it up at ~{cleanest.hour_of_day:02d}:00 captures most of it.")
+    if now.quality == "typical":
+        basis = "In a typical day this month (averaged from last year's data)"
+    elif now.quality == "mock":
+        basis = "In GreenPick's illustrative mock pattern (not meaningful for scheduling)"
     else:
-        note = (f"Over the last ~{n_days} day(s), this region's time-of-day pattern is fairly flat; "
-                f"a fixed run-time won't help much — region choice is the bigger lever.")
+        basis = f"Over the last ~{n_days} day(s)"
+    tz = "" if now.quality == "mock" else " UTC"
+    if reduction is not None and reduction >= 10:
+        note = (f"{basis}, this region is cleanest around {cleanest.hour_of_day:02d}:00{tz} "
+                f"(avg ~{cleanest.avg_g_co2_per_kwh:.0f} gCO2/kWh) and dirtiest around "
+                f"{dirtiest.hour_of_day:02d}:00{tz} - ~{reduction:.0f}% apart. For a recurring job, "
+                f"standing it up at ~{cleanest.hour_of_day:02d}:00{tz} captures most of it."
+                + small_gap_note(cleanest.avg_g_co2_per_kwh, dirtiest.avg_g_co2_per_kwh))
+    else:
+        note = (f"{basis}, this region's time-of-day pattern is fairly flat; a fixed run-time "
+                f"won't help much — region choice is the bigger lever.")
 
     return DailyPatternAdvice(
         region=region, provider=provider, source=now.source, quality=now.quality,

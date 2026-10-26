@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from ..config import SETTINGS
 from .repository import CarbonRepository
-from .mock_repository import MockCarbonRepository
+from .mock_repository import MockCarbonRepository  # noqa: F401  (re-exported; tests use it)
+from .typical_repository import TypicalCarbonRepository
 
 
 def get_repository() -> CarbonRepository:
@@ -25,4 +26,5 @@ def get_repository() -> CarbonRepository:
         # Route per region: EIA for US (eia_ba), ENTSO-E for EU (entsoe_eic), else mock.
         from .auto_repository import AutoRepository
         return AutoRepository(SETTINGS.eia_api_key, SETTINGS.entsoe_token, SETTINGS.cache_ttl_seconds)
-    return MockCarbonRepository()
+    # Default and 'mock' setting: typical monthly values from real data, mock only where uncovered.
+    return TypicalCarbonRepository()

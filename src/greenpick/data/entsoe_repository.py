@@ -24,7 +24,7 @@ from xml.etree import ElementTree as ET
 import httpx
 
 from ..models import CarbonReading, Provider, HourlyCarbon, ForecastHour
-from .mock_repository import MockCarbonRepository
+from .typical_repository import TypicalCarbonRepository
 from .static_data import region_meta, emission_factors
 from ._net import REQUEST_TIMEOUT, REQUEST_DEADLINE_S, describe_error
 
@@ -75,7 +75,7 @@ class ENTSOERepository:
         self._token = token
         self._ttl = cache_ttl_seconds
         self._cache: dict[str, tuple[float, CarbonReading]] = {}  # EIC -> (fetched_at, reading)
-        self._fallback = MockCarbonRepository()
+        self._fallback = TypicalCarbonRepository()
         self._warned_no_token = False
         self._down_until: dict[str, float] = {}   # EIC -> epoch secs; skip the zone until then
 

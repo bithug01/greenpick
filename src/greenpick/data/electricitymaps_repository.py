@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 import httpx
 
 from ..models import CarbonReading, Provider, HourlyCarbon
-from .mock_repository import MockCarbonRepository
+from .typical_repository import TypicalCarbonRepository
 from .static_data import region_meta
 from ._net import REQUEST_TIMEOUT, REQUEST_DEADLINE_S, describe_error
 
@@ -35,7 +35,7 @@ class ElectricityMapsRepository:
         self._token = token
         self._ttl = cache_ttl_seconds
         self._cache: dict[str, tuple[float, CarbonReading]] = {}  # zone -> (fetched_at, reading)
-        self._fallback = MockCarbonRepository()
+        self._fallback = TypicalCarbonRepository()
         self._token_rejected = False   # once a 401/403 is seen, stop calling with a bad key
         self._warned_no_token = False
 

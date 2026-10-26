@@ -25,7 +25,8 @@ seconds. (It responds when you ask; auto-nudging on infra-code changes is on the
 > **Status: working — 15 tools.** Live carbon for US (EIA-930) and EU (ENTSO-E), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
 > GPU-training **and LLM-inference** carbon, right-sizing, serving-pattern and data-locality/residency
-> checks — all shipped. Falls back to clearly-labelled mock data offline or without API keys.
+> checks — all shipped. Offline or without API keys, falls back to clearly-labelled *typical* values:
+> this month's average for each grid, from a year of real data.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/bithug01/greenpick/master/docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
@@ -44,7 +45,7 @@ tradeoff) while you're still in the editor, before you commit.*
 - ⚡ **GPU training & LLM inference carbon** — estimate a run's footprint and the greener *where* + *when*; the size/placement choices that actually move the number.
 - 🌍 **Greener region picks** — ranked by carbon, with the cost + latency tradeoff shown, not hidden.
 - 🛡 **Backfire guards** — flags when a greener move loses to egress, or crosses a data-residency line.
-- 🔌 **Live US + EU grid data**, honest mock fallback — **no API keys required to start**.
+- 🔌 **Live US + EU grid data**, with a realistic fallback built from a year of real data — **no API keys required to start**.
 
 ## Contents
 
@@ -156,8 +157,12 @@ See `docs/user-questions-backlog.md`.
 
 - **EIA-930** (US balancing authorities) and **ENTSO-E** (EU zones) — live grid carbon,
   auto-routed by region. Both also drive `cleanest_hours_to_run` from recent hourly history.
-- **Mock** — deterministic, offline default; clearly labelled `quality: "mock"` so nothing is
-  mistaken for a real reading. Used wherever a key is missing or a region isn't covered.
+- **Typical** — the offline default and fallback: for each region, this calendar month's average
+  intensity and average hour-of-day profile (UTC), computed from 12 months of real hourly EIA-930 /
+  ENTSO-E data (`data/typical.json`, refreshed by `scripts/refresh_typical.py`). Labelled
+  `quality: "typical"` — a realistic norm, never presented as a current reading.
+- **Mock** — a hand-set illustrative value, labelled `quality: "mock"`, used only for regions no free
+  source covers (e.g. Sydney).
 - Cost: a **dated static pricing table** (`data/pricing.json`), refreshed from live Vantage
   pricing via `scripts/refresh_pricing.py` using one matched method across all three clouds.
 - Instance-family efficiency: directional perf-per-watt multipliers (`data/instance_families.json`).
@@ -165,10 +170,10 @@ See `docs/user-questions-backlog.md`.
 
 Set `EIA_API_KEY` and `ENTSOE_TOKEN` (both free) for live carbon — see
 [Turn on live data](#turn-on-live-data); `GREENPICK_CARBON_SOURCE` selects the source (`auto` routes
-US→EIA, EU→ENTSO-E, else mock).
+US→EIA, EU→ENTSO-E, falling back to typical).
 
-The data layer is a swappable repository (`MOCK` by default, works offline). Nothing here invents
-numbers: the LLM writes the *rationale*, the code supplies the *figures*.
+The data layer is a swappable repository (typical values by default, works offline). Nothing here
+invents numbers: the LLM writes the *rationale*, the code supplies the *figures*.
 
 ## Honest limitations (shipped in the tool itself)
 
@@ -190,7 +195,7 @@ Or from source, for development (editable install + tests):
 git clone https://github.com/bithug01/greenpick.git
 cd greenpick
 pip install -e ".[dev]"
-cp .env.example .env            # defaults to mock data — works offline
+cp .env.example .env            # defaults to typical values — works offline
 python -m greenpick             # run the MCP server (stdio)
 pytest                          # run tests
 ```
@@ -200,7 +205,7 @@ Connect it to an MCP client (e.g. Kiro / Claude Code / Cursor) by pointing the c
 
 ### Turn on live data
 
-GreenPick runs on labelled mock data until you give it two free keys:
+GreenPick runs on labelled typical values until you give it two free keys:
 [EIA](https://www.eia.gov/opendata/register.php) (US grid) and
 [ENTSO-E](https://transparency.entsoe.eu/) (EU grid). Pass them as environment variables.
 (A `.env` file works for a source checkout; if you installed with `pip install greenpick`, use one
@@ -259,17 +264,18 @@ with open("greenpick-server.log", "w") as errlog:
 Top-level `await` works in Jupyter. In a plain script, put the `with` block inside an `async def`
 and run it with `asyncio.run(...)`.
 
-Every carbon figure includes a `quality` field: `live` means real grid data, `mock` means a
-fallback value. Check it to confirm live data is on. A result that isn't live also includes a
+Every carbon figure includes a `quality` field: `live` means a current reading, `typical` means
+this month's average from last year's real data, and `mock` means a hand-set value for a region
+with no real data. Check it to confirm live data is on. A result that isn't live also includes a
 `live_data_hint` saying why (no key set, the source didn't respond, or no free source covers that
 region) and what to do about it.
 
 ## FAQ
 
-**Do I need API keys?** No — GreenPick runs on clearly-labelled mock data out of the box. For *live*
+**Do I need API keys?** No — out of the box GreenPick uses *typical* values: each grid's average for
+the current month, from a year of real hourly data, labelled `quality: "typical"`. For *live*
 carbon, set two free keys (`EIA_API_KEY` for US, `ENTSOE_TOKEN` for EU) and
-`GREENPICK_CARBON_SOURCE=auto` — see [Turn on live data](#turn-on-live-data). Without them it still
-works; it just says `quality: "mock"`.
+`GREENPICK_CARBON_SOURCE=auto` — see [Turn on live data](#turn-on-live-data).
 
 **Why "directional" and not audited numbers?** Because it's for a *design-time decision*, not a
 compliance report. "Stockholm is ~30× cleaner than Sydney" is what you need to pick a region in
@@ -285,9 +291,10 @@ your workload leans on right now. GreenPick is deliberately location-based becau
 *placement/timing* decision actually affects — you can't change the provider's annual REC portfolio,
 but you *can* choose a cleaner grid or a cleaner hour. We ignore RECs by design, not oversight.
 
-**What happens for a region with no live data?** It falls back to the recent historical pattern or
-to mock, and labels which — it never presents a fallback as a live reading. Forecast likewise degrades
-to historical (labelled) where no day-ahead feed exists (e.g. US).
+**What happens for a region with no live data?** It falls back to that region's typical value for
+the month (or, for a region no free source covers, a hand-set mock value), and labels which — it
+never presents a fallback as a live reading. Forecast likewise degrades to the recent history, or
+the typical day, where no day-ahead feed exists (e.g. US), labelled as such.
 
 **Can it rank Claude vs GPT vs Llama for carbon?** No, by design. `estimate_inference_carbon` works by
 model *size class* (self-hosted-friendly), not a named-model leaderboard — vendors don't disclose the

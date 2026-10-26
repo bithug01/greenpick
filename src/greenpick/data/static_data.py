@@ -67,6 +67,16 @@ def resolve_size_class(name: str) -> tuple[str, dict] | None:
 
 
 @lru_cache(maxsize=1)
+def typical() -> dict:
+    """Per-region, per-calendar-month typical carbon from a year of real data (the fallback).
+    Empty if the file is absent, so GreenPick still runs (falling back to mock)."""
+    path = _DATA_DIR / "typical.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
 def gpu_power() -> dict:
     """Directional GPU/accelerator power model (TDP + utilization + host overhead) for training."""
     return json.loads((_DATA_DIR / "gpu_power.json").read_text(encoding="utf-8"))

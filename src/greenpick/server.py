@@ -35,8 +35,8 @@ all GPUs; report wall_clock_hours as the run length), estimate_inference_carbon.
 serving_pattern_advice; carbon_metric_scaffold for an app to track its own estimated carbon.
 Before recommending a region move, run data_locality_egress_check: egress can erase the win. Mention \
 any residency_note.
-Every carbon figure carries source and quality fields. Report 'mock', 'cached' or 'historical' values \
-as such, never as live readings — including figures derived from them, such as a kg CO2 saving. \
+Every carbon figure carries source and quality fields. Report 'typical', 'mock', 'cached' or \
+'historical' values as such, never as live readings — including figures derived from them, such as a kg CO2 saving. \
 When a result includes live_data_hint, pass it on: it says why the data isn't live and how to turn \
 live data on. If a call fails or output is missing, say so rather than describing \
 what the tool would return. GreenPick estimates; it does not measure running systems or report model \
@@ -372,6 +372,6 @@ def explain_methodology_and_limits() -> dict:
         "forecast": "Day-ahead forecast is RELATIVE: upcoming hours ranked by forecast wind+solar output (ENTSO-E A69), not an absolute gCO2/kWh forecast. EU only; US/uncovered zones degrade to the recent historical pattern (labelled 'historical').",
         "data_residency": "GreenPick flags when a recommended move CROSSES a jurisdiction (esp. leaving the EEA) as a geographic heads-up only. It does NOT assess legal/GDPR compliance, does not encode adequacy decisions, and is not legal advice — confirm with your own data governance.",
         "ignored": "Embodied/hardware carbon and provider renewable-energy certificates.",
-        "mock_data": "Used when live data isn't available (no key, an uncovered region, or the source didn't respond). Each grid gets a fixed typical value — illustrative, not a current reading — and an illustrative hourly pattern, so timing advice on mock data isn't meaningful. Results that use it are labelled 'mock' and carry a live_data_hint saying why and how to turn live data on.",
+        "fallback_data": "Used when live data isn't available (no key, the source didn't respond, or GreenPick isn't set to live). 'typical' = this calendar month's average intensity and average hour-of-day profile (UTC) for the region, computed from 12 months of real hourly EIA-930 / ENTSO-E data with GreenPick's own emission factors (bundled typical.json, refreshed by scripts/refresh_typical.py) — a realistic norm, not a current reading. 'mock' = a hand-set illustrative value with a synthetic hourly pattern, used only for regions with no free data source (e.g. Sydney); timing advice on mock isn't meaningful. Both carry a live_data_hint saying why the result isn't live and how to turn live data on.",
         "data_sources": "GREENPICK_CARBON_SOURCE=auto routes US regions to EIA-930 and EU regions to ENTSO-E (both free, live); other regions, or any region without a key, use clearly-labelled mock data. Electricity Maps is available when selected explicitly (GREENPICK_CARBON_SOURCE=electricitymaps).",
     }

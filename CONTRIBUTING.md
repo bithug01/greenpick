@@ -12,7 +12,7 @@ GreenPick's value is that it's **honest and directional**. Please keep contribut
 - **No precision the data can't back.** Prefer ranges and "directional" labels over false certainty.
 - **Flag, don't rule.** GreenPick surfaces considerations (egress, residency) and points to the
   authority; it doesn't issue verdicts it isn't qualified to make (e.g. legal compliance).
-- **Say when it's mock/estimated.** Never present a fallback or an estimate as a live measurement.
+- **Say when it's typical, mock, or estimated.** Never present a fallback or an estimate as a live measurement.
 
 If a change would make GreenPick claim more than it can honestly support, it's probably not the right
 change — even if it's technically impressive.
