@@ -30,11 +30,12 @@ seconds. (It responds when you ask; auto-nudging on infra-code changes is on the
 > this month's average for each grid, from a year of real data.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/bithug01/greenpick/master/docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~30× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
+  <img src="https://raw.githubusercontent.com/bithug01/greenpick/master/docs/img/region-carbon-30x.svg" alt="Same H100 training run, ~28× the carbon depending only on region (Stockholm vs Sydney)" width="560" />
 </p>
 
-*The same 40-GPU-hour training run emits ~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney — a ~30×
-difference from region choice alone. Ask GreenPick and it surfaces that (with the cost and latency
+*The same 40-GPU-hour training run emits ~0.6 kg CO₂ in Stockholm vs ~17.5 kg in Sydney — a ~28×
+difference from region choice alone (typical October grids; Sydney on Ember's 2025 national figure,
+a lower bound for its coal-heavier state grid). Ask GreenPick and it surfaces that (with the cost and latency
 tradeoff) while you're still in the editor, before you commit.*
 
 **▶ [See the 5-minute demo](docs/demo.md)** — three scenarios with real tool output (training placement, the egress backfire, the forecast).
@@ -165,12 +166,12 @@ See `docs/user-questions-backlog.md`.
   intensity and average hour-of-day profile (UTC), computed from 12 months of real hourly EIA-930 /
   ENTSO-E data (`data/typical.json`, refreshed by `scripts/refresh_typical.py`). Labelled
   `quality: "typical"` — a realistic norm, never presented as a current reading.
-- **Annual** — for Singapore, Tokyo and Mumbai/Pune, where no free hourly data exists: the country's
+- **Annual** — for Singapore, Tokyo, Mumbai/Pune and Sydney, where no free hourly data exists: the country's
   yearly lifecycle grid intensity from [Ember](https://ember-energy.org/) (via Our World in Data,
   CC BY 4.0), with source and year (`data/annual.json`). Labelled `quality: "annual_average"`; fine for
   comparing regions, but carries no timing signal.
-- **Mock** — a hand-set illustrative value, labelled `quality: "mock"`, used only where nothing else
-  exists (currently Sydney).
+- **Mock** — a hand-set illustrative value, labelled `quality: "mock"`, kept only as a last resort if
+  every other source is missing. No catalog region relies on it.
 - Cost: a **dated static pricing table** (`data/pricing.json`), refreshed from live Vantage
   pricing via `scripts/refresh_pricing.py` using one matched method across all three clouds.
 - Instance-family efficiency: directional perf-per-watt multipliers (`data/instance_families.json`).
@@ -288,7 +289,7 @@ carbon, set two free keys (`EIA_API_KEY` for US, `ENTSOE_TOKEN` for EU) and
 `GREENPICK_CARBON_SOURCE=auto` — see [Turn on live data](#turn-on-live-data).
 
 **Why "directional" and not audited numbers?** Because it's for a *design-time decision*, not a
-compliance report. "Stockholm is ~30× cleaner than Sydney" is what you need to pick a region in
+compliance report. "Stockholm is ~28× cleaner than Sydney" is what you need to pick a region in
 seconds — a certified figure is a different job for a different tool (Electricity Maps, WattTime).
 GreenPick is for *decisions*, not *disclosures*, and says so in every tool's limitations.
 

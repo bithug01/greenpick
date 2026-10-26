@@ -6,7 +6,7 @@
     "us-west-2":      { "name": "Oregon",        "lat": 45.87, "lon": -119.69, "zone": "US-NW-PACW", "eia_ba": "BPAT", "jurisdiction": "US" },
     "eu-west-1":      { "name": "Ireland",       "lat": 53.41, "lon": -8.24,  "zone": "IE", "entsoe_eic": "10Y1001A1001A59C", "jurisdiction": "EEA" },
     "eu-north-1":     { "name": "Stockholm",     "lat": 59.33, "lon": 18.07,  "zone": "SE", "entsoe_eic": "10YSE-1--------K", "jurisdiction": "EEA" },
-    "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW", "jurisdiction": "AU" },
+    "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW", "annual_zone": "AU", "jurisdiction": "AU" },
     "ca-central-1":   { "name": "Montreal",      "lat": 45.50, "lon": -73.57, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" },
     "ap-southeast-1": { "name": "Singapore",     "lat": 1.29,  "lon": 103.85, "zone": "SG", "annual_zone": "SG", "jurisdiction": "SG" },
     "ap-northeast-1": { "name": "Tokyo",         "lat": 35.68, "lon": 139.69, "zone": "JP-TK", "annual_zone": "JP", "jurisdiction": "JP" },

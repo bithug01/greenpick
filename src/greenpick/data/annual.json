@@ -8,6 +8,8 @@
   "JP": { "country": "Japan", "g_co2_per_kwh": 477.3, "year": 2025,
           "note": "National average; the Tokyo (TEPCO) area mix differs somewhat and varies by hour." },
   "IN": { "country": "India", "g_co2_per_kwh": 670.1, "year": 2025,
-          "note": "National average; Maharashtra (Mumbai, Pune) runs about 6% above it on Ember's state-level data." }
+          "note": "National average; Maharashtra (Mumbai, Pune) runs about 6% above it on Ember's state-level data." },
+  "AU": { "country": "Australia", "g_co2_per_kwh": 525.2, "year": 2025,
+          "note": "National average; New South Wales (Sydney) is more coal-heavy and runs higher, so treat this as a lower bound for Sydney." }
  }
 }

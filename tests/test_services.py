@@ -348,10 +348,10 @@ async def test_auto_router_picks_source_by_region(monkeypatch):
     repo = AutoRepository(eia_key="k", entsoe_token="t")
     us = await repo.carbon_now("aws", "us-east-1")      # -> EIA
     eu = await repo.carbon_now("aws", "eu-north-1")     # -> ENTSO-E
-    syd = await repo.carbon_now("aws", "ap-southeast-2")  # -> mock
+    syd = await repo.carbon_now("aws", "ap-southeast-2")  # -> no live source: sourced yearly figure
     assert us.source == "eia"
     assert eu.source == "entsoe"
-    assert syd.quality == "mock"
+    assert syd.quality == "annual_average"
 
 
 @pytest.mark.asyncio
@@ -1494,12 +1494,24 @@ async def test_typical_reading_is_this_months_real_average():
 
 
 @pytest.mark.asyncio
-async def test_uncovered_region_still_falls_back_to_mock():
+async def test_mock_is_only_the_last_resort(monkeypatch):
+    from greenpick.data import typical_repository as tr
     repo = TypicalCarbonRepository()
+    # Sydney has no typical data but a sourced yearly figure -> annual, not mock.
     r = await repo.carbon_now("aws", "ap-southeast-2")
-    assert r.quality == "mock"
+    assert r.quality == "annual_average" and r.g_co2_per_kwh == 525.2
+    # With no yearly figure either, mock still answers (labelled) rather than failing.
+    monkeypatch.setattr(tr, "annual_entry", lambda p, reg: None)
+    m = await repo.carbon_now("aws", "ap-southeast-2")
+    assert m.quality == "mock"
     hist = await repo.carbon_history("aws", "ap-southeast-2")
     assert hist and hist[0].period.startswith("H") and not hist[0].period.endswith("Z")
+
+
+def test_no_catalog_region_relies_on_mock():
+    from greenpick.data.static_data import iter_regions
+    for prov, reg, meta in iter_regions():
+        assert typical_entry(prov, reg) or annual_entry(prov, reg), f"{prov}/{reg} would be mock"
 
 
 @pytest.mark.asyncio

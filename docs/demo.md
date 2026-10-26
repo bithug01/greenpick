@@ -39,10 +39,14 @@ Greenest: aws/eu-north-1 at ~0.7 kg CO₂ — ~97% less than the dirtiest
 option (aws/ap-southeast-2, ~19.4 kg).
 ```
 
-![Same H100 run, carbon by region — 30× between Stockholm and Sydney](img/region-carbon-30x.svg)
+*Captured 2026-10-12, when Sydney still used a hand-set mock value (580 g/kWh). Since 0.4.1 Sydney uses
+Ember's sourced 2025 figure for Australia (525 g/kWh, a lower bound for coal-heavier NSW), so the same
+run there is ~17.5 kg and the gap is ~28×.*
 
-**Why this matters:** the *same* 40-GPU-hour run is **~0.7 kg CO₂ in Stockholm vs ~19 kg in Sydney —
-a ~30× difference from region choice alone.** On a small always-on web service that gap is grams; on
+![Same H100 run, carbon by region — ~28× between Stockholm and Sydney](img/region-carbon-30x.svg)
+
+**Why this matters:** the *same* 40-GPU-hour run is **~0.6 kg CO₂ in Stockholm vs ~17.5 kg in Sydney —
+a ~28× difference from region choice alone.** On a small always-on web service that gap is grams; on
 a real training run it's kilograms you can actually move. This is the decision GreenPick exists for.
 
 > Note the honesty: Sweden's grid is so clean *and* flat that GreenPick tells you timing won't help
@@ -122,7 +126,7 @@ regions, which have no free generation forecast, degrade to the recent historica
 
 ## The three in one sentence
 
-*Run your training in Stockholm not Sydney (~30× cleaner), **unless** your data egress would backfire
+*Run your training in Stockholm not Sydney (~28× cleaner), **unless** your data egress would backfire
 the move (GreenPick checks), and start it when the grid is forecast cleanest (~20:00 tomorrow).*
 
 That's a complete, carbon-aware deployment decision — made at design time, with the tradeoffs stated,
@@ -136,7 +140,7 @@ GreenPick is **directional by choice** — and for a design-time decision, that'
 fast, free, and in-context, so you can make the call in seconds without leaving the editor. The
 precision matches the moment.
 
-- **Built for the choice, not the disclosure.** A region decision needs "Stockholm is ~30× cleaner
+- **Built for the choice, not the disclosure.** A region decision needs "Stockholm is ~28× cleaner
   than Sydney" — not a certified number. When you later need audited Scope-2 / GHG-Protocol figures
   for a *report*, that's a different job and a different tool (Electricity Maps, WattTime). GreenPick
   gets you to the right decision; those certify it after the fact.

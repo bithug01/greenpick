@@ -1,6 +1,6 @@
 [project]
 name = "greenpick"
-version = "0.4.0"
+version = "0.4.1"
 description = "Design-time sustainability co-pilot (MCP server): greener, cheaper cloud infrastructure decisions with carbon + cost + latency tradeoffs."
 readme = "README.md"
 requires-python = ">=3.11"
