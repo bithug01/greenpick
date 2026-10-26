@@ -67,6 +67,10 @@ async def carbon_forecast(
         if pattern.cleanest_hour_of_day is not None:
             note += (f"A typical day here is cleanest around {pattern.cleanest_hour_of_day:02d}:00 "
                      f"UTC - a reasonable default for a recurring job.")
+    elif pattern.quality == "annual_average":
+        source, quality = "ember_annual", "annual_average"
+        note = ("No day-ahead forecast or hourly data exists for this region — only a yearly "
+                "average — so GreenPick can't say which hours are cleaner here.")
     elif pattern.quality == "mock":
         # No live history either: the "pattern" is GreenPick's illustrative mock curve. Label it
         # mock — calling it 'historical' would pass a synthetic shape off as real past data.

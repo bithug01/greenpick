@@ -1,0 +1,13 @@
+{
+ "_comment": "Yearly average grid carbon intensity for regions with no free hourly data source. Lifecycle gCO2e/kWh (full lifecycle incl. upstream methane), the same basis as GreenPick's per-fuel factors, so these compare fairly with live/typical regions. National figures: no hourly or sub-national lifecycle data is freely available for these grids. Used with quality='annual_average'; no hourly profile, so no timing advice.",
+ "_source": "Ember yearly electricity data (lifecycle CO2 intensity of electricity generation), via Our World in Data grapher 'carbon-intensity-electricity'. CC BY 4.0.",
+ "_as_of": "2026-10-27",
+ "zones": {
+  "SG": { "country": "Singapore", "g_co2_per_kwh": 497.1, "year": 2025,
+          "note": "About 95% natural gas; a yearly figure is a fair description of this steady grid." },
+  "JP": { "country": "Japan", "g_co2_per_kwh": 477.3, "year": 2025,
+          "note": "National average; the Tokyo (TEPCO) area mix differs somewhat and varies by hour." },
+  "IN": { "country": "India", "g_co2_per_kwh": 670.1, "year": 2025,
+          "note": "National average; Maharashtra (Mumbai, Pune) runs about 6% above it on Ember's state-level data." }
+ }
+}

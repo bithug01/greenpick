@@ -77,6 +77,13 @@ def typical_context(provider: str, region: str, g_co2_per_kwh: float, timestamp:
     }
 
 
+def annual_entry(provider: str, region: str) -> Optional[dict]:
+    """The annual.json zone for a region with no free hourly source (country, g, year), or None."""
+    from .static_data import annual, region_meta
+    zone = (region_meta(provider, region) or {}).get("annual_zone")  # type: ignore[arg-type]
+    return annual().get("zones", {}).get(zone) if zone else None
+
+
 class TypicalCarbonRepository:
     def __init__(self) -> None:
         self._mock = MockCarbonRepository()
@@ -85,6 +92,11 @@ class TypicalCarbonRepository:
         entry = typical_entry(provider, region)
         month = _month(entry) if entry else None
         if not month:
+            yearly = annual_entry(provider, region)
+            if yearly:
+                return CarbonReading(region=region, provider=provider,
+                                     g_co2_per_kwh=yearly["g_co2_per_kwh"], source="ember_annual",
+                                     timestamp=str(yearly["year"]), quality="annual_average")
             return await self._mock.carbon_now(provider, region)
         return CarbonReading(
             region=region,
@@ -101,6 +113,8 @@ class TypicalCarbonRepository:
         entry = typical_entry(provider, region)
         month = _month(entry) if entry else None
         if not month:
+            if annual_entry(provider, region):
+                return []        # a yearly figure has no hourly shape — don't invent one
             return await self._mock.carbon_history(provider, region)
         return [HourlyCarbon(period=f"H{h:02d}Z", g_co2_per_kwh=g)
                 for h, g in enumerate(month["hourly_utc"]) if g is not None]

@@ -186,6 +186,9 @@ async def estimate_training_carbon(
                     f"deferrable, so this stacks on the region choice."
                     + scheduling_service.small_gap_note(advice.cleanest_g_co2_per_kwh or 0,
                                                         advice.dirtiest_g_co2_per_kwh or 0))
+    elif advice.hours_analyzed == 0:
+        time_txt = (" There's no hourly data for that region (only a yearly average), so GreenPick "
+                    "can't advise on timing there — the region choice is the lever.")
     else:
         time_txt = (" That region's grid is fairly flat over the window, so when you run matters "
                     "little there — the region choice is the lever.")

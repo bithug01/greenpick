@@ -1721,3 +1721,62 @@ def test_montreal_is_a_greener_option_for_new_york():
     added = (latency_service.estimate_latency_ms("aws", "ca-central-1", nyc)
              - latency_service.estimate_latency_ms("aws", "us-east-1", nyc))
     assert added < 15                                  # within an East Coast latency budget
+
+
+# --- 0.4.0: Asia — Singapore, Tokyo, Mumbai/Pune on sourced yearly figures ---
+
+from greenpick.data.typical_repository import annual_entry
+
+_ASIA = [("aws", "ap-southeast-1", "SG"), ("aws", "ap-northeast-1", "JP"), ("aws", "ap-south-1", "IN"),
+         ("gcp", "asia-southeast1", "SG"), ("gcp", "asia-northeast1", "JP"), ("gcp", "asia-south1", "IN"),
+         ("azure", "southeastasia", "SG"), ("azure", "japaneast", "JP"), ("azure", "centralindia", "IN")]
+
+
+def test_asia_regions_have_a_sourced_yearly_figure():
+    from greenpick.data.static_data import annual, region_meta
+    assert "Ember" in annual()["_source"]
+    for prov, reg, zone in _ASIA:
+        meta = region_meta(prov, reg)
+        assert meta["annual_zone"] == zone and meta["jurisdiction"] == zone
+        e = annual_entry(prov, reg)
+        assert e["year"] >= 2024 and 300 < e["g_co2_per_kwh"] < 900
+
+
+@pytest.mark.asyncio
+async def test_asia_reading_is_labelled_annual_and_has_no_hourly_shape():
+    repo = TypicalCarbonRepository()
+    r = await repo.carbon_now("aws", "ap-southeast-1")
+    assert (r.quality, r.source) == ("annual_average", "ember_annual")
+    assert r.g_co2_per_kwh == annual_entry("aws", "ap-southeast-1")["g_co2_per_kwh"]
+    assert await repo.carbon_history("aws", "ap-southeast-1") == []       # never invent a curve
+
+
+@pytest.mark.asyncio
+async def test_timing_tools_say_there_is_no_hourly_data_for_asia():
+    from greenpick.services import scheduling_service, forecast_service, training_service
+    repo = TypicalCarbonRepository()
+    tod = await scheduling_service.cleanest_time_of_day(repo, "aws", "ap-northeast-1")
+    assert tod.hours_analyzed == 0 and "No recent hourly history" in tod.note
+    fc = await forecast_service.carbon_forecast(repo, "aws", "ap-northeast-1")
+    assert fc.quality == "annual_average" and "yearly average" in fc.note
+    tr = await training_service.estimate_training_carbon(
+        repo, gpu="a100", gpu_count=8, gpu_hours=40, region="ap-south-1", provider="aws")
+    assert "no hourly data" in tr.rationale and "fairly flat" not in tr.rationale
+
+
+def test_hint_explains_annual_figures_without_asking_for_a_key(monkeypatch):
+    monkeypatch.setattr(_config, "SETTINGS", _settings(source="auto", eia="k", entsoe="t"))
+    r = {"provider": "gcp", "region": "asia-south1", "quality": "annual_average", "source": "ember_annual"}
+    hint = data_hint.with_hint(r)["live_data_hint"]
+    assert "yearly average grid intensity (Ember, lifecycle basis: India 2025)" in hint
+    assert "no timing signal" in hint
+    assert "set EIA_API_KEY" not in hint and "No free live source covers" not in hint
+
+
+@pytest.mark.asyncio
+async def test_asian_users_are_now_served_from_asia():
+    from greenpick.services import serving_service
+    hubs = [ServingHub(name="apac", lat=0, lon=0, share=1.0)]
+    adv = await serving_service.serving_pattern(TypicalCarbonRepository(), hubs, Workload(vcpu=1, ram_gb=2))
+    assert adv.single_region.region in ("ap-southeast-1", "asia-southeast1", "southeastasia")
+    assert adv.single_region.weighted_latency_ms < 40                  # was ~199 ms from Sydney

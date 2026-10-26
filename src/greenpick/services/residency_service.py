@@ -22,6 +22,9 @@ _LABEL = {
     "US": "the United States",
     "AU": "Australia",
     "CA": "Canada",
+    "SG": "Singapore",
+    "JP": "Japan",
+    "IN": "India",
 }
 
 DISCLAIMER = ("GreenPick does NOT assess legal compliance - this is a geographic heads-up only. "

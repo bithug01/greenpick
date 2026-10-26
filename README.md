@@ -94,7 +94,7 @@ backfire guards** — is the part nothing else puts together.
 
 ## Scope
 
-- Providers: **AWS, GCP, Azure** regions.
+- Providers: **AWS, GCP, Azure** — 25 regions across the US, Europe, Canada, Asia and Australia.
 - Workloads: long-running **web/API services**, **GPU training** runs, and **deferrable jobs**
   (ETL / batch / backups) — placement and timing for each.
 - Carbon = **grid carbon intensity by region** (directional, point-in-time; live US + EU), plus a
@@ -165,8 +165,12 @@ See `docs/user-questions-backlog.md`.
   intensity and average hour-of-day profile (UTC), computed from 12 months of real hourly EIA-930 /
   ENTSO-E data (`data/typical.json`, refreshed by `scripts/refresh_typical.py`). Labelled
   `quality: "typical"` — a realistic norm, never presented as a current reading.
-- **Mock** — a hand-set illustrative value, labelled `quality: "mock"`, used only for regions no free
-  source covers (e.g. Sydney).
+- **Annual** — for Singapore, Tokyo and Mumbai/Pune, where no free hourly data exists: the country's
+  yearly lifecycle grid intensity from [Ember](https://ember-energy.org/) (via Our World in Data,
+  CC BY 4.0), with source and year (`data/annual.json`). Labelled `quality: "annual_average"`; fine for
+  comparing regions, but carries no timing signal.
+- **Mock** — a hand-set illustrative value, labelled `quality: "mock"`, used only where nothing else
+  exists (currently Sydney).
 - Cost: a **dated static pricing table** (`data/pricing.json`), refreshed from live Vantage
   pricing via `scripts/refresh_pricing.py` using one matched method across all three clouds.
 - Instance-family efficiency: directional perf-per-watt multipliers (`data/instance_families.json`).
@@ -270,8 +274,9 @@ Top-level `await` works in Jupyter. In a plain script, put the `with` block insi
 and run it with `asyncio.run(...)`.
 
 Every carbon figure includes a `quality` field: `live` means a current reading, `typical` means
-this month's average from last year's real data, and `mock` means a hand-set value for a region
-with no real data. Check it to confirm live data is on. A result that isn't live also includes a
+this month's average from last year's real data, `annual_average` means a sourced yearly national
+figure (regions with no free hourly data), and `mock` means a hand-set value. Check it to confirm
+live data is on. A result that isn't live also includes a
 `live_data_hint` saying why (no key set, the source didn't respond, or no free source covers that
 region) and what to do about it.
 

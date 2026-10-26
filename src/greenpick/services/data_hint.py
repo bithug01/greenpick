@@ -53,13 +53,13 @@ def _walk(obj: Any) -> Iterator[dict]:
             yield from _walk(v)
 
 
-_FALLBACK = ("typical", "mock")
+_FALLBACK = ("typical", "annual_average", "mock")
 
 
 def _scan(result: dict) -> tuple[dict[str, set[tuple[str, str]]], bool, set[str]]:
     """For each fallback kind ('typical' / 'mock'): the regions whose figures use it; whether any
     such figure had no locatable region; and which kinds fed timing advice."""
-    regions: dict[str, set[tuple[str, str]]] = {k: set() for k in _FALLBACK}
+    regions: dict[str, set[tuple[str, str]]] = {k: set() for k in _FALLBACK}  # noqa: C420
     unlocated = False
     timing: set[str] = set()
     for d in _walk(result):
@@ -117,15 +117,26 @@ def _typical_sentence(locs: set[tuple[str, str]]) -> str:
             f"real hourly data{span} — a realistic norm, not a current reading.")
 
 
+def _annual_sentence(locs: set[tuple[str, str]]) -> str:
+    from ..data.typical_repository import annual_entry
+    found = sorted({(e["country"], e["year"]) for e in (annual_entry(p, r) for p, r in locs) if e})
+    which = ", ".join(f"{c} {y}" for c, y in found)
+    return (f"Annual figures here ({_names(list(locs))}) are the country's yearly average grid intensity "
+            f"(Ember, lifecycle basis{': ' + which if which else ''}) — no free hourly data exists for "
+            "these grids, so they're a sound basis for comparing regions but carry no timing signal.")
+
+
 def build_hint(result: dict) -> Optional[str]:
     by_kind, unlocated, timing = _scan(result)
-    all_locs = by_kind["typical"] | by_kind["mock"]
+    all_locs = by_kind["typical"] | by_kind["annual_average"] | by_kind["mock"]
     if not all_locs and not unlocated:
         return None
 
     parts = []
     if by_kind["typical"]:
         parts.append(_typical_sentence(by_kind["typical"]))
+    if by_kind["annual_average"]:
+        parts.append(_annual_sentence(by_kind["annual_average"]))
     if by_kind["mock"] or (unlocated and not by_kind["typical"]):
         where = f" for {_names(list(by_kind['mock']))}" if by_kind["mock"] else ""
         parts.append(f"Mock figures{where} are a hand-set illustrative value for the grid, used where "
@@ -155,6 +166,8 @@ def build_hint(result: dict) -> Optional[str]:
                          f"{_names(locs) or 'this region'}. Use GREENPICK_CARBON_SOURCE=auto to route "
                          "each region to its own live source.")
         elif reason == "uncovered":
+            if all(loc in by_kind["annual_average"] for loc in locs):
+                continue        # already explained by the annual sentence; no action to suggest
             parts.append(f"No free live source covers {_names(locs)} yet, so GreenPick uses its "
                          "fallback there.")
     if "typical" in timing:

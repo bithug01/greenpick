@@ -146,7 +146,7 @@ async def compare_regions(
         if greener_improvement < MEANINGFUL_PCT:
             rationale = (
                 f"Staying on {baseline.provider}/{baseline.region} is reasonable — no candidate "
-                f"region is meaningfully greener (all within ~{MEANINGFUL_PCT:.0f}%)."
+                f"region is meaningfully greener (none is more than ~{MEANINGFUL_PCT:.0f}% cleaner)."
             )
         else:
             extra_lat = greenest.added_latency_ms

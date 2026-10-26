@@ -77,6 +77,15 @@ def typical() -> dict:
 
 
 @lru_cache(maxsize=1)
+def annual() -> dict:
+    """Yearly average intensity for regions with no free hourly source (lifecycle, sourced)."""
+    path = _DATA_DIR / "annual.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
 def gpu_power() -> dict:
     """Directional GPU/accelerator power model (TDP + utilization + host overhead) for training."""
     return json.loads((_DATA_DIR / "gpu_power.json").read_text(encoding="utf-8"))
