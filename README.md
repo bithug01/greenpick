@@ -119,7 +119,7 @@ See `docs/user-questions-backlog.md`.
 |------|--------------|
 | `compare_regions_tri_axis` | Rank candidate regions by carbon with cost + latency tradeoffs; recommend a pick, each axis rated R/Y/G. Pass `regions` to rank only the ones you'd actually consider. |
 | `greener_alternative_to` | "You picked X — the greenest region within +N ms latency is Y (−Z% carbon, Δcost)." The core nudge. |
-| `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness. |
+| `region_carbon_now` | Current gCO₂/kWh for a region, with source + timestamp + freshness — and, when live, whether that's cleaner, dirtier or about usual for that hour this month. |
 
 ### Time a job (scheduling)
 

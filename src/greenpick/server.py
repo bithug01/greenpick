@@ -18,6 +18,7 @@ from .services import (
 )
 from .models import ServingHub
 from .services.data_hint import with_hint
+from .data.typical_repository import typical_context
 
 # Sent to every MCP client at connect. Agents learn a server from its tool list, not its README, and
 # the tool list starts with region-picking — so without this they lead with the rarest decision and
@@ -135,9 +136,17 @@ async def estimate_workload_carbon(
 
 @mcp.tool()
 async def region_carbon_now(provider: str, region: str) -> dict:
-    """Current grid carbon intensity for a region, with source, timestamp, and data freshness."""
+    """Current grid carbon intensity for a region, with source, timestamp, and data freshness.
+    When the reading is live, also says how it compares with what's typical for that hour this month
+    (vs_typical: cleaner_than_usual / about_usual / dirtier_than_usual) — useful for "is now a good
+    moment to run this?"."""
     reading = await carbon_service.carbon_now(_repo, provider, region)  # type: ignore[arg-type]
-    return with_hint(reading.model_dump())
+    out = reading.model_dump()
+    if reading.quality in ("live", "live_estimated", "cached"):
+        ctx = typical_context(provider, region, reading.g_co2_per_kwh, reading.timestamp)
+        if ctx:
+            out.update(ctx)
+    return with_hint(out)
 
 
 @mcp.tool()

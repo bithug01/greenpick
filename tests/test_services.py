@@ -1544,3 +1544,54 @@ def test_default_repository_is_typical(monkeypatch):
     from greenpick import data as data_pkg
     monkeypatch.setattr(data_pkg, "SETTINGS", _settings(source="mock"))
     assert isinstance(data_pkg.get_repository(), TypicalCarbonRepository)
+
+
+# --- 0.2.1: a live reading says how it compares with what's typical for that hour ---
+
+from greenpick.data.typical_repository import typical_context
+
+
+def _typical_at(prov, reg, month, hour):
+    return typical_entry(prov, reg)["months"][str(month)]["hourly_utc"][hour]
+
+
+def test_typical_context_compares_with_same_hour_this_month():
+    base = _typical_at("aws", "us-east-1", 10, 6)
+    clean = typical_context("aws", "us-east-1", base * 0.7, "2026-10-23T06")
+    assert clean["typical_this_hour_g_co2_per_kwh"] == base
+    assert clean["vs_typical"] == "cleaner_than_usual" and clean["vs_typical_pct"] == -30.0
+    assert "06:00 UTC in October" in clean["typical_note"]
+    dirty = typical_context("aws", "us-east-1", base * 1.25, "2026-10-23T06")
+    assert dirty["vs_typical"] == "dirtier_than_usual"
+    usual = typical_context("aws", "us-east-1", base * 1.05, "2026-10-23T06")
+    assert usual["vs_typical"] == "about_usual"
+
+
+def test_typical_context_reads_entsoe_timestamps():
+    base = _typical_at("aws", "eu-north-1", 10, 18)
+    ctx = typical_context("aws", "eu-north-1", base, "2026-10-23T18:00Z")
+    assert ctx["typical_this_hour_g_co2_per_kwh"] == base and ctx["vs_typical"] == "about_usual"
+
+
+def test_no_typical_context_for_uncovered_region():
+    assert typical_context("aws", "ap-southeast-2", 500.0, "2026-10-23T06") is None
+
+
+@pytest.mark.asyncio
+async def test_region_carbon_now_adds_context_only_to_live_readings(monkeypatch):
+    from greenpick import server
+    from greenpick.models import CarbonReading
+
+    class LiveRepo(MockCarbonRepository):
+        async def carbon_now(self, provider, region):
+            return CarbonReading(region=region, provider=provider, g_co2_per_kwh=200.0,
+                                 source="eia", timestamp="2026-10-23T06", quality="live")
+
+    f = getattr(server.region_carbon_now, "fn", server.region_carbon_now)
+    monkeypatch.setattr(server, "_repo", LiveRepo())
+    live = await f(provider="aws", region="us-east-1")
+    assert live["vs_typical"] == "cleaner_than_usual" and "live_data_hint" not in live
+
+    monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
+    fallback = await f(provider="aws", region="us-east-1")
+    assert fallback["quality"] == "typical" and "vs_typical" not in fallback   # no self-comparison
