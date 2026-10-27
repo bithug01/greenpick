@@ -8,6 +8,17 @@ from __future__ import annotations
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
+
+# Tool annotations let MCP hosts decide whether to ask the user before a call (and some
+# directories require them). Every GreenPick tool only reads and computes: nothing is created,
+# changed or deleted, so repeating a call has no extra effect. Most fetch live grid data from
+# outside services (EIA, ENTSO-E, Hydro-Québec, IESO) -> openWorldHint; the methodology tool
+# returns fixed text only.
+LIVE_DATA_TOOL = ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                                 idempotentHint=True, openWorldHint=True)
+LOCAL_TOOL = ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                             idempotentHint=True, openWorldHint=False)
 
 from .models import Workload, GeoPoint, Provider
 from .data import get_repository
@@ -48,7 +59,7 @@ mcp = FastMCP("greenpick", instructions=INSTRUCTIONS)
 _repo = get_repository()
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def compare_regions_tri_axis(
     user_lat: float,
     user_lon: float,
@@ -80,7 +91,7 @@ async def compare_regions_tri_axis(
     return with_hint(rec.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def greener_alternative_to(
     current_region: str,
     user_lat: float,
@@ -110,7 +121,7 @@ async def greener_alternative_to(
     return with_hint(rec.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def estimate_workload_carbon(
     provider: str,
     region: str,
@@ -134,7 +145,7 @@ async def estimate_workload_carbon(
     })
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def region_carbon_now(provider: str, region: str) -> dict:
     """Current grid carbon intensity for a region, with source, timestamp, and data freshness.
     When the reading is live, also says how it compares with what's typical for that hour this month
@@ -149,7 +160,7 @@ async def region_carbon_now(provider: str, region: str) -> dict:
     return with_hint(out)
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def cleanest_hours_to_run(
     provider: str, region: str, top_n: int = 3, window_hours: Optional[int] = None,
 ) -> dict:
@@ -164,7 +175,7 @@ async def cleanest_hours_to_run(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def greener_instance_family(
     provider: str,
     region: str,
@@ -192,7 +203,7 @@ async def greener_instance_family(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def estimate_inference_carbon(
     size_class: str,
     monthly_requests: float,
@@ -214,7 +225,7 @@ async def estimate_inference_carbon(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def rightsizing_check(
     provider: str,
     region: str,
@@ -237,7 +248,7 @@ async def rightsizing_check(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def carbon_metric_scaffold(
     language: str = "python",
     region: Optional[str] = None,
@@ -260,7 +271,7 @@ async def carbon_metric_scaffold(
     return with_hint(scaffold.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def serving_pattern_advice(
     hubs: list[dict],
     vcpu: float = 1,
@@ -290,7 +301,7 @@ async def serving_pattern_advice(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def data_locality_egress_check(
     compute_provider: str,
     compute_region: str,
@@ -312,7 +323,7 @@ async def data_locality_egress_check(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def carbon_forecast(
     provider: str, region: str, hours_ahead: int = 24, top_n: int = 5,
 ) -> dict:
@@ -327,7 +338,7 @@ async def carbon_forecast(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def cleanest_time_of_day(provider: str, region: str) -> dict:
     """For a RECURRING job (e.g. a nightly batch you run every day), find the region's cleanest
     time of day — each hour-of-day averaged across the recent days of data. Returns the cleanest/
@@ -337,7 +348,7 @@ async def cleanest_time_of_day(provider: str, region: str) -> dict:
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LIVE_DATA_TOOL)
 async def estimate_training_carbon(
     gpu: str,
     gpu_count: int,
@@ -364,7 +375,7 @@ async def estimate_training_carbon(
     return with_hint(advice.model_dump())
 
 
-@mcp.tool()
+@mcp.tool(annotations=LOCAL_TOOL)
 def explain_methodology_and_limits() -> dict:
     """GreenPick's assumptions and what it explicitly does NOT claim. Read this before trusting a number."""
     return {

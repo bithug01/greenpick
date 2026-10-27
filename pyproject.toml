@@ -1,6 +1,6 @@
 [project]
 name = "greenpick"
-version = "0.4.1"
+version = "0.4.2"
 description = "Design-time sustainability co-pilot (MCP server): greener, cheaper cloud infrastructure decisions with carbon + cost + latency tradeoffs."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "mcp>=1.2,<2",       # Model Context Protocol SDK (FastMCP lives here). Pinned <2: mcp 2.x
+    "mcp>=1.7,<2",       # Model Context Protocol SDK (FastMCP lives here). >=1.7: tool annotations. Pinned <2: mcp 2.x
                          # renamed FastMCP -> MCPServer and changed APIs; this code targets the 1.x API.
     "pydantic>=2.0",
     "httpx>=0.27",       # async HTTP for live data sources

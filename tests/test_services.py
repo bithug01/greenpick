@@ -1792,3 +1792,55 @@ async def test_asian_users_are_now_served_from_asia():
     adv = await serving_service.serving_pattern(TypicalCarbonRepository(), hubs, Workload(vcpu=1, ram_gb=2))
     assert adv.single_region.region in ("ap-southeast-1", "asia-southeast1", "southeastasia")
     assert adv.single_region.weighted_latency_ms < 40                  # was ~199 ms from Sydney
+
+
+# --- 0.4.2: tool annotations on every tool; every tool tested by name ---
+
+def test_every_tool_declares_all_four_annotation_hints():
+    import asyncio
+    from greenpick import server
+    tools = asyncio.run(server.mcp.list_tools())
+    assert len(tools) == 15
+    for t in tools:
+        a = t.annotations
+        assert a is not None, t.name
+        for hint in (a.readOnlyHint, a.destructiveHint, a.idempotentHint, a.openWorldHint):
+            assert isinstance(hint, bool), t.name           # explicit booleans, none missing
+        assert a.readOnlyHint and not a.destructiveHint and a.idempotentHint, t.name
+    local = {t.name for t in tools if not t.annotations.openWorldHint}
+    assert local == {"explain_methodology_and_limits"}   # the only tool that fetches nothing
+
+
+def _tool(name):
+    from greenpick import server
+    f = getattr(server, name)
+    return getattr(f, "fn", f)
+
+
+@pytest.mark.asyncio
+async def test_tool_greener_alternative_to(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", MockCarbonRepository())
+    r = await _tool("greener_alternative_to")(current_region="us-east-1", user_lat=40.71, user_lon=-74.01,
+                                               vcpu=4, ram_gb=16, max_added_latency_ms=50)
+    assert r["recommended_region"] in ("aws/ca-central-1", "gcp/northamerica-northeast1", "azure/canadaeast")
+    picked = next(c for c in r["candidates"]
+                  if f"{c['provider']}/{c['region']}" == r["recommended_region"])
+    assert picked["added_latency_ms"] <= 50 + 15
+
+
+@pytest.mark.asyncio
+async def test_tool_cleanest_hours_to_run(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
+    r = await _tool("cleanest_hours_to_run")(provider="aws", region="us-west-2", window_hours=4)
+    assert r["quality"] == "typical" and r["cleanest"]
+    assert r["window"]["window_hours"] == 4 and r["window"]["start_hour_of_day"] is not None
+    assert "live_data_hint" in r
+
+
+def test_tool_explain_methodology_and_limits():
+    r = _tool("explain_methodology_and_limits")()
+    for key in ("what_it_is", "what_it_is_not", "carbon", "cost", "fallback_data", "data_sources"):
+        assert r.get(key), key
+    assert "annual_average" in r["fallback_data"] and "Hydro-Québec" in r["data_sources"]
