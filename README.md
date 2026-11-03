@@ -278,6 +278,10 @@ with open("greenpick-server.log", "w") as errlog:
 Top-level `await` works in Jupyter. In a plain script, put the `with` block inside an `async def`
 and run it with `asyncio.run(...)`.
 
+Using an AI assistant inside a notebook? Paste the
+[starter prompt](https://github.com/bithug01/greenpick/blob/master/docs/using-from-a-notebook.md)
+as your first message: it sets up the connection and points the assistant at the right tool for each question.
+
 Every carbon figure includes a `quality` field: `live` means a current reading, `typical` means
 this month's average from last year's real data, `annual_average` means a sourced yearly national
 figure (regions with no free hourly data), and `mock` means a hand-set value. Check it to confirm

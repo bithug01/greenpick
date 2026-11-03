@@ -1990,3 +1990,19 @@ def test_move_tools_point_to_the_justification_tool():
     assert "region_move_justification" in desc["compare_regions_tri_axis"]
     assert "region_move_justification" in desc["greener_alternative_to"]
     assert "FULL dollar range" in desc["migration_payoff"]
+
+
+# --- docs/using-from-a-notebook.md stays in step with the real tool list ---
+def test_notebook_prompt_lists_every_tool_and_no_unknown_ones():
+    import asyncio, re
+    from pathlib import Path
+    from greenpick import server
+    names = {t.name for t in asyncio.run(server.mcp.list_tools())}
+    text = (Path(__file__).resolve().parent.parent / "docs" / "using-from-a-notebook.md").read_text(encoding="utf-8")
+    missing = sorted(n for n in names if n not in text)
+    assert not missing, f"add these tools to docs/using-from-a-notebook.md: {missing}"
+    routed = set()
+    for line in text.splitlines():
+        if line.startswith("- ") and " -> " in line:
+            routed |= set(re.findall(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", line.split(" -> ", 1)[1]))
+    assert routed and routed <= names, f"unknown tool names in the routing list: {sorted(routed - names)}"
