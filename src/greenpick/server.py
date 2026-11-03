@@ -358,7 +358,9 @@ async def data_locality_egress_check(
     compute runs, where the data lives (provider+region), and monthly GB crossing between them.
     Returns a directional egress-COST ballpark, a coarse transfer-carbon figure, and — if you
     pass the carbon saving the greener-region move buys — whether it's still a net win. Use this
-    before accepting a greener-region suggestion when your data stays put."""
+    before accepting a greener-region suggestion when your data stays put. Use the user's real GB and
+    data location; if unknown, ask rather than assume. If verdict_status is 'not_evaluated' there is NO
+    answer yet to 'does it backfire?': say so, and get carbon_saving_kg_co2_from_move first."""
     advice = await locality_service.data_locality_check(
         _repo, compute_provider, compute_region, data_provider, data_region,  # type: ignore[arg-type]
         monthly_cross_boundary_gb=monthly_cross_boundary_gb,

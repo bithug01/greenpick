@@ -317,6 +317,7 @@ class DataLocalityWarning(BaseModel):
     transfer_carbon_quality: Optional[str] = None
     carbon_saving_kg_co2_from_move: Optional[float] = None # echoed back if provided
     net_carbon_verdict: Optional[str] = None    # set only when a saving was supplied
+    verdict_status: str = "not_evaluated"       # 'evaluated' only when a saving was supplied
     residency_note: Optional[str] = None        # neutral cross-jurisdiction heads-up, if any
     warning: str = ""
     recommendation: str = ""

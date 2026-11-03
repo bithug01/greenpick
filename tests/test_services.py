@@ -1882,3 +1882,16 @@ def test_tool_greenest_regions_filters_and_errors():
     assert r["ranking"] and all(x["provider"] == "aws" for x in r["ranking"])
     assert any(x["quality"] == "annual_average" for x in _tool("greenest_regions_on_average")(month=1)["ranking"])
     assert "error" in _tool("greenest_regions_on_average")(month=13)
+
+
+# --- 0.5.1: a missing carbon saving is called out, not silently skipped ---
+@pytest.mark.asyncio
+async def test_locality_without_saving_says_no_verdict():
+    from greenpick.services import locality_service as ls
+    base = dict(compute_provider="aws", compute_region="eu-north-1",
+                data_provider="aws", data_region="us-east-1", monthly_cross_boundary_gb=100)
+    no = await ls.data_locality_check(MockCarbonRepository(), **base)
+    assert no.net_carbon_verdict is None and no.verdict_status == "not_evaluated"
+    assert no.warning.startswith("NO NET VERDICT") and "carbon_saving_kg_co2_from_move" in no.warning
+    yes = await ls.data_locality_check(MockCarbonRepository(), carbon_saving_kg_co2_from_move=40.0, **base)
+    assert yes.verdict_status == "evaluated" and not yes.warning.startswith("NO NET VERDICT")

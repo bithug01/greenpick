@@ -109,7 +109,9 @@ async def data_locality_check(
 
     # Net verdict only if the caller told us what the move saves.
     verdict = None
+    verdict_status = "not_evaluated"
     if carbon_saving_kg_co2_from_move is not None:
+        verdict_status = "evaluated"
         net = carbon_saving_kg_co2_from_move - transfer_kg
         if net > 0:
             verdict = (f"Still a net win: the move saves ~{carbon_saving_kg_co2_from_move:.1f} kg "
@@ -130,9 +132,10 @@ async def data_locality_check(
                f"cross the boundary, costing {cost_txt}, plus ~{transfer_kg:.1f} kg CO2/mo of extra "
                f"transfer. A greener-region move can be undone by this.")
     if verdict is None:
-        # Point the caller at the optional input that turns this into a net win/backfire verdict.
-        warning += (" For a net verdict, pass carbon_saving_kg_co2_from_move (the kg CO2/mo the move "
-                    "saves, e.g. the difference between estimate_workload_carbon in the two regions).")
+        # Say up front that the question 'does it backfire?' is NOT answered yet, and what is missing.
+        warning = ("NO NET VERDICT: you did not pass carbon_saving_kg_co2_from_move, so this does NOT say "
+                   "whether the move backfires on carbon. Ask the user for it, or compute it as the difference "
+                   "between estimate_workload_carbon in the two regions, and call again. " + warning)
 
     if severity == "high":
         rec = ("High exposure. Co-locate compute with the data, or move the data to the greener "
@@ -160,6 +163,6 @@ async def data_locality_check(
         est_monthly_transfer_kg_co2=transfer_kg,
         transfer_carbon_source=reading.source, transfer_carbon_quality=reading.quality,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
-        net_carbon_verdict=verdict, residency_note=residency_note,
+        net_carbon_verdict=verdict, verdict_status=verdict_status, residency_note=residency_note,
         warning=warning, recommendation=rec, limitations=LIMITATIONS,
     )
