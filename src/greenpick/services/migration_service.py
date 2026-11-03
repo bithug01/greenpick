@@ -22,6 +22,10 @@ from ..data.static_data import network_model
 from . import carbon_service, locality_service, residency_service
 
 
+def _usd(x: float) -> str:
+    return f"-${abs(x):,.0f}" if x < 0 else f"${x:,.0f}"
+
+
 async def migration_payoff(
     repo: CarbonRepository,
     data_provider: str, data_region: str,
@@ -83,7 +87,7 @@ async def migration_payoff(
                    f"no longer crossing), within your {horizon_months:g}-month horizon.")
         if straddle:
             summary += (f" In dollars it could land either side of zero over the horizon "
-                        f"(net ${net_usd[0]:,.0f} to ${net_usd[1]:,.0f}); the carbon saving is "
+                        f"(net {_usd(net_usd[0])} to {_usd(net_usd[1])}); the carbon saving is "
                         f"{'positive' if net_kg and net_kg > 0 else 'not positive'} (~{net_kg:,.1f} kg).")
         summary += egress_only
     else:
