@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 15 tools over FastMCP.
+"""MCP server: exposes GreenPick's 17 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -25,7 +25,7 @@ from .data import get_repository
 from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
     training_service, forecast_service, serving_service, metric_scaffold_service,
-    rightsizing_service, inference_service,
+    rightsizing_service, inference_service, offhours_service, typical_ranking_service,
 )
 from .models import ServingHub
 from .services.data_hint import with_hint
@@ -38,13 +38,15 @@ INSTRUCTIONS = """\
 GreenPick advises on cloud infrastructure decisions BEFORE you deploy, weighing carbon, cost and \
 latency together. Strongest uses, in order:
 1. Right-sizing (rightsizing_check): an over-provisioned instance cut to a standard, buyable size \
-saves money and carbon in the same move. Lead with the monthly dollar saving.
+saves money and carbon in the same move. Lead with the monthly dollar saving. For dev, test or other \
+environments that don't need to run 24/7, offhours_check shows what switching them off saves.
 2. Scheduling deferrable jobs: cleanest_hours_to_run (one-off), cleanest_time_of_day (recurring), \
 carbon_forecast (EU day-ahead).
 3. GPU training and LLM inference footprints: estimate_training_carbon (gpu_hours is the TOTAL across \
 all GPUs; report wall_clock_hours as the run length), estimate_inference_carbon.
 4. Efficiency and placement: greener_instance_family, compare_regions_tri_axis, greener_alternative_to, \
-serving_pattern_advice; carbon_metric_scaffold for an app to track its own estimated carbon.
+serving_pattern_advice, greenest_regions_on_average (which regions are normally cleanest in a month); \
+carbon_metric_scaffold for an app to track its own estimated carbon.
 Before recommending a region move, run data_locality_egress_check: egress can erase the win. Mention \
 any residency_note.
 Every carbon figure carries source and quality fields. Report 'typical', 'mock', 'cached' or \
@@ -246,6 +248,48 @@ async def rightsizing_check(
         ram_utilization=ram_utilization, hours_per_month=hours_per_month,
     )
     return with_hint(advice.model_dump())
+
+
+@mcp.tool(annotations=LIVE_DATA_TOOL)
+async def offhours_check(
+    provider: str,
+    region: str,
+    vcpu: float,
+    ram_gb: float,
+    hours_per_week_on: float,
+) -> dict:
+    """Non-prod / idle scheduling, the other FinOps basic next to right-sizing: "this doesn't need to
+    run 24/7." Give the instance size and how many hours a WEEK it actually needs to be on (weekdays
+    9-17 is 40, weekdays 7-19 is 60, around the clock is 168). Returns the monthly $ AND kg CO2 saved
+    by switching it off the rest of the time. Lead with the dollar number. Only for on-demand capacity
+    that tolerates being off (dev, test, staging, demo, batch); reserved instances and savings plans
+    are paid for regardless. Directional, compute only."""
+    if not 0 < hours_per_week_on <= 168:
+        return {"provider": provider, "region": region,
+                "error": "hours_per_week_on must be between 0 and 168 (there are 168 hours in a week)."}
+    advice = await offhours_service.offhours_check(
+        _repo, provider, region, vcpu, ram_gb, hours_per_week_on,  # type: ignore[arg-type]
+    )
+    return with_hint(advice.model_dump())
+
+
+@mcp.tool(annotations=LOCAL_TOOL)
+def greenest_regions_on_average(
+    month: Optional[int] = None,
+    whole_year: bool = False,
+    providers: Optional[list[str]] = None,
+    regions: Optional[list[str]] = None,
+    top_n: Optional[int] = None,
+) -> dict:
+    """Which regions are normally the cleanest in a given month (default: the current one), or over
+    the whole year? Ranks regions by their TYPICAL average grid carbon, built from a year of real
+    hourly data, with each region's cleanest and dirtiest month. Use it to pick a region on a monthly
+    norm rather than a single hour; use region_carbon_now for what the grid is doing today. Carbon only
+    (no cost or latency; compare_regions_tri_axis weighs all three). Offline, needs no keys. Regions
+    labelled annual_average have only a yearly national figure and are not month-specific."""
+    return typical_ranking_service.rank_regions(
+        month=month, whole_year=whole_year, providers=providers, regions=regions, top_n=top_n,
+    )
 
 
 @mcp.tool(annotations=LIVE_DATA_TOOL)

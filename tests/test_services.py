@@ -1531,7 +1531,9 @@ async def test_timing_advice_on_typical_data_says_what_it_is():
     repo = TypicalCarbonRepository()
     tod = await ss.cleanest_time_of_day(repo, "aws", "us-east-1")
     assert tod.quality == "typical"
-    assert tod.note.startswith("In a typical day this month") and "UTC" in tod.note
+    # Depends on the month's data: a flat pattern says so, otherwise the note names the UTC window.
+    assert tod.note.startswith("In a typical day this month")
+    assert "UTC" in tod.note or "fairly flat" in tod.note
     win = await ss.cleanest_hours(repo, "aws", "us-west-2", window_hours=4)
     if win.window_reduction_pct and win.window_reduction_pct >= 10:
         assert "typical day" in win.note and "UTC" in win.note
@@ -1800,7 +1802,7 @@ def test_every_tool_declares_all_four_annotation_hints():
     import asyncio
     from greenpick import server
     tools = asyncio.run(server.mcp.list_tools())
-    assert len(tools) == 15
+    assert len(tools) == 17
     for t in tools:
         a = t.annotations
         assert a is not None, t.name
@@ -1808,7 +1810,7 @@ def test_every_tool_declares_all_four_annotation_hints():
             assert isinstance(hint, bool), t.name           # explicit booleans, none missing
         assert a.readOnlyHint and not a.destructiveHint and a.idempotentHint, t.name
     local = {t.name for t in tools if not t.annotations.openWorldHint}
-    assert local == {"explain_methodology_and_limits"}   # the only tool that fetches nothing
+    assert local == {"explain_methodology_and_limits", "greenest_regions_on_average"}   # fetch nothing
 
 
 def _tool(name):
@@ -1844,3 +1846,39 @@ def test_tool_explain_methodology_and_limits():
     for key in ("what_it_is", "what_it_is_not", "carbon", "cost", "fallback_data", "data_sources"):
         assert r.get(key), key
     assert "annual_average" in r["fallback_data"] and "Hydro-Québec" in r["data_sources"]
+
+
+# --- 0.5.0: offhours_check and greenest_regions_on_average ---
+@pytest.mark.asyncio
+async def test_tool_offhours_check_maths(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", MockCarbonRepository())
+    full = await _tool("offhours_check")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16, hours_per_week_on=168)
+    part = await _tool("offhours_check")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16, hours_per_week_on=50)
+    assert full["monthly_usd_saving"] == 0 and not full["is_worthwhile"]
+    assert part["is_worthwhile"] and part["monthly_usd_saving"] > 0
+    assert abs(part["cost_saving_pct"] - (1 - 50 / 168) * 100) < 0.5
+    assert part["monthly_kg_co2_saving"] > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hours", [0, -5, 169])
+async def test_tool_offhours_check_rejects_bad_hours(hours):
+    r = await _tool("offhours_check")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16, hours_per_week_on=hours)
+    assert "error" in r
+
+
+def test_tool_greenest_regions_month_and_year():
+    m = _tool("greenest_regions_on_average")(month=3, top_n=5)
+    assert m["period"] == "March" and len(m["ranking"]) == 5
+    g = [r["g_co2_per_kwh"] for r in m["ranking"]]
+    assert g == sorted(g) and m["ranking"][0]["rank"] == 1
+    y = _tool("greenest_regions_on_average")(whole_year=True, top_n=3)
+    assert y["period"] == "the whole year"
+
+
+def test_tool_greenest_regions_filters_and_errors():
+    r = _tool("greenest_regions_on_average")(month=1, providers=["aws"])
+    assert r["ranking"] and all(x["provider"] == "aws" for x in r["ranking"])
+    assert any(x["quality"] == "annual_average" for x in _tool("greenest_regions_on_average")(month=1)["ranking"])
+    assert "error" in _tool("greenest_regions_on_average")(month=13)

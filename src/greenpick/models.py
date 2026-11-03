@@ -348,3 +348,32 @@ class Recommendation(BaseModel):
     residency_note: Optional[str] = None        # neutral heads-up if the pick crosses jurisdictions
     rationale: str = ""
     limitations: str = ""
+
+
+class OffHoursAdvice(BaseModel):
+    """What switching a non-prod / idle environment off outside the hours it's needed saves.
+
+    The other FinOps basic next to right-sizing: the cheapest hour is the one you don't run.
+    Cost and carbon both scale with running hours, so the saving is the same fraction of each.
+    Directional, compute only."""
+    provider: Provider
+    region: str
+    vcpu: float
+    ram_gb: float
+    hours_per_week_on: float
+    hours_per_month_now: float                    # always-on baseline (730)
+    hours_per_month_scheduled: float
+    on_share_pct: float                           # share of the month it's running
+    cost_now_usd_per_month: Optional[float] = None
+    cost_scheduled_usd_per_month: Optional[float] = None
+    monthly_usd_saving: Optional[float] = None
+    cost_saving_pct: Optional[float] = None
+    carbon_now_kg_per_month: Optional[float] = None
+    carbon_scheduled_kg_per_month: Optional[float] = None
+    monthly_kg_co2_saving: Optional[float] = None
+    carbon_saving_pct: Optional[float] = None
+    is_worthwhile: bool = False
+    carbon_source: Optional[str] = None
+    carbon_quality: Optional[str] = None
+    rationale: str = ""
+    limitations: str = ""

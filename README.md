@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
   <img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests: passing" />
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+" />
-  <img src="https://img.shields.io/badge/MCP%20tools-15-0ea5e9" alt="MCP tools: 15" />
+  <img src="https://img.shields.io/badge/MCP%20tools-17-0ea5e9" alt="MCP tools: 17" />
 </p>
 
 A **design-time sustainability co-pilot** that runs as an MCP server inside your vibe-coding
@@ -22,7 +22,7 @@ environment (Cursor / Claude Code / Kiro). Ask it where to deploy, when to run a
 right-size — and it answers with an honest **carbon + cost + latency** tradeoff, in-editor, in
 seconds. (It responds when you ask; auto-nudging on infra-code changes is on the roadmap.)
 
-> **Status: working — 15 tools.** Live carbon for US (EIA-930), EU (ENTSO-E) and Canada (Hydro-Québec,
+> **Status: working — 17 tools.** Live carbon for US (EIA-930), EU (ENTSO-E) and Canada (Hydro-Québec,
 > IESO — no key needed), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
 > GPU-training **and LLM-inference** carbon, right-sizing, serving-pattern and data-locality/residency
@@ -113,7 +113,7 @@ See `docs/user-questions-backlog.md`.
 
 ## MCP tools
 
-15 tools, grouped by what you're trying to do.
+17 tools, grouped by what you're trying to do.
 
 ### Pick a region
 
@@ -129,6 +129,7 @@ See `docs/user-questions-backlog.md`.
 |------|--------------|
 | `cleanest_hours_to_run` | Cleanest recent hours to time a deferrable job (ETL, backups, training), + % reduction. Pass `window_hours` for a job of known duration → cleanest contiguous window to start at. |
 | `cleanest_time_of_day` | For a **recurring** job (nightly batch): the region's cleanest time of day, averaged across recent days. A daily pattern, not a 7-day weekly one. |
+| `greenest_regions_on_average` | Which regions are cleanest on a **typical** day in a given month (or the whole year), ranked from last year's real data. Offline, no keys; a planning view, not today's grid. |
 | `carbon_forecast` | Forward-looking: which **upcoming** hours will be cleanest, from the EU day-ahead wind+solar forecast (ENTSO-E). Relative ranking; US/uncovered zones degrade to the recent historical pattern. |
 
 ### Estimate a workload's carbon
@@ -145,6 +146,7 @@ See `docs/user-questions-backlog.md`.
 |------|--------------|
 | `greener_instance_family` | A greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
 | `rightsizing_check` | Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller size cuts **both** cost and carbon → the right-sized target with monthly $ and kg CO₂ saving. |
+| `offhours_check` | For dev/test/staging that doesn't need to run 24/7: the monthly $ and kg CO2 saved by running it only N hours a week. Compute only, directional. |
 | `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
 | `serving_pattern_advice` | For a user-facing platform: serve from one region or several? Traffic-weighted latency + carbon, with the multi-region data-sync egress and cross-jurisdiction residency catches. |
 
