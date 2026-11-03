@@ -140,10 +140,10 @@ async def data_locality_check(
 
     if verdict is None:
         summary = ("NO NET VERDICT: carbon_saving_kg_co2_from_move was not provided, so this does not say "
-                   f"whether the move backfires. Egress: {cost_txt.replace('roughly ', '')}; "
+                   f"whether the move backfires. Estimated {cost_txt.replace('roughly ', '')}; "
                    f"transfer ~{transfer_kg:.1f} kg CO2/mo. Supply the saving and call again.")
     else:
-        summary = f"{verdict} Egress: {cost_txt.replace('roughly ', '')}."
+        summary = f"{verdict} Estimated {cost_txt.replace('roughly ', '')}."
     if severity == "high":
         rec = ("High exposure. Co-locate compute with the data, or move the data to the greener "
                "region too. If you can't, confirm the carbon/cost saving beats this egress penalty "
