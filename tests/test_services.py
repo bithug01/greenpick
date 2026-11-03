@@ -1895,3 +1895,17 @@ async def test_locality_without_saving_says_no_verdict():
     assert no.warning.startswith("NO NET VERDICT") and "carbon_saving_kg_co2_from_move" in no.warning
     yes = await ls.data_locality_check(MockCarbonRepository(), carbon_saving_kg_co2_from_move=40.0, **base)
     assert yes.verdict_status == "evaluated" and not yes.warning.startswith("NO NET VERDICT")
+
+
+# --- 0.5.2: the one-line summary is the FIRST key, so partial printouts still show it ---
+@pytest.mark.asyncio
+async def test_locality_summary_is_first_key_and_flags_missing_verdict():
+    from greenpick.services import locality_service as ls
+    base = dict(compute_provider="aws", compute_region="eu-north-1",
+                data_provider="aws", data_region="us-east-1", monthly_cross_boundary_gb=100)
+    no = (await ls.data_locality_check(MockCarbonRepository(), **base)).model_dump()
+    assert next(iter(no)) == "summary" and no["summary"].startswith("NO NET VERDICT")
+    yes = (await ls.data_locality_check(MockCarbonRepository(), carbon_saving_kg_co2_from_move=40.0, **base)).model_dump()
+    assert "net win" in yes["summary"].lower() and not yes["summary"].startswith("NO NET VERDICT")
+    same = (await ls.data_locality_check(MockCarbonRepository(), "aws", "us-east-1", "aws", "us-east-1", 100)).model_dump()
+    assert next(iter(same)) == "summary" and same["summary"]

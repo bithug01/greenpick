@@ -78,6 +78,7 @@ async def data_locality_check(
             egress_rate_usd_per_gb_low=0.0, egress_rate_usd_per_gb_high=0.0,
             est_monthly_egress_usd_low=0.0, est_monthly_egress_usd_high=0.0,
             est_monthly_transfer_kg_co2=0.0,
+            summary="No cross-boundary egress: compute and data are in the same region.",
             warning="Compute and data are co-located — no cross-boundary egress for this flow.",
             recommendation="No locality penalty. Choose the region on carbon/latency/cost as usual.",
             limitations=LIMITATIONS,
@@ -137,6 +138,12 @@ async def data_locality_check(
                    "whether the move backfires on carbon. Ask the user for it, or compute it as the difference "
                    "between estimate_workload_carbon in the two regions, and call again. " + warning)
 
+    if verdict is None:
+        summary = ("NO NET VERDICT: carbon_saving_kg_co2_from_move was not provided, so this does not say "
+                   f"whether the move backfires. Egress: {cost_txt.replace('roughly ', '')}; "
+                   f"transfer ~{transfer_kg:.1f} kg CO2/mo. Supply the saving and call again.")
+    else:
+        summary = f"{verdict} Egress: {cost_txt.replace('roughly ', '')}."
     if severity == "high":
         rec = ("High exposure. Co-locate compute with the data, or move the data to the greener "
                "region too. If you can't, confirm the carbon/cost saving beats this egress penalty "
@@ -163,6 +170,6 @@ async def data_locality_check(
         est_monthly_transfer_kg_co2=transfer_kg,
         transfer_carbon_source=reading.source, transfer_carbon_quality=reading.quality,
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
-        net_carbon_verdict=verdict, verdict_status=verdict_status, residency_note=residency_note,
+        summary=summary, net_carbon_verdict=verdict, verdict_status=verdict_status, residency_note=residency_note,
         warning=warning, recommendation=rec, limitations=LIMITATIONS,
     )

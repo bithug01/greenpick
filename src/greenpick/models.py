@@ -303,6 +303,7 @@ class DataLocalityWarning(BaseModel):
 
     The core 'does the greener-region move backfire?' check. Primary signal is egress COST;
     transfer carbon is a secondary, deliberately-coarse figure."""
+    summary: str = ""                           # one line, FIRST key: the answer or what is missing
     compute_location: str                       # "provider/region"
     data_location: str                          # "provider/region"
     monthly_cross_boundary_gb: float
