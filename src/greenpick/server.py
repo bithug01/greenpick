@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 17 tools over FastMCP.
+"""MCP server: exposes GreenPick's 19 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -26,6 +26,7 @@ from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
     training_service, forecast_service, serving_service, metric_scaffold_service,
     rightsizing_service, inference_service, offhours_service, typical_ranking_service,
+    justification_service, migration_service,
 )
 from .models import ServingHub
 from .services.data_hint import with_hint
@@ -48,7 +49,8 @@ all GPUs; report wall_clock_hours as the run length), estimate_inference_carbon.
 serving_pattern_advice, greenest_regions_on_average (which regions are normally cleanest in a month); \
 carbon_metric_scaffold for an app to track its own estimated carbon.
 Before recommending a region move, run data_locality_egress_check: egress can erase the win. Mention \
-any residency_note.
+any residency_note. To weigh moving the data too, use migration_payoff; for a paste-ready paragraph \
+for a pull request, use region_move_justification.
 Every carbon figure carries source and quality fields. Report 'typical', 'mock', 'cached' or \
 'historical' values as such, never as live readings — including figures derived from them, such as a kg CO2 saving. \
 When a result includes live_data_hint, pass it on: it says why the data isn't live and how to turn \
@@ -367,6 +369,58 @@ async def data_locality_egress_check(
         carbon_saving_kg_co2_from_move=carbon_saving_kg_co2_from_move,
     )
     return with_hint(advice.model_dump())
+
+
+@mcp.tool(annotations=LIVE_DATA_TOOL)
+async def migration_payoff(
+    data_provider: str,
+    data_region: str,
+    compute_provider: str,
+    compute_region: str,
+    data_gb_to_migrate: float,
+    monthly_cross_boundary_gb: float,
+    horizon_months: float = 12,
+) -> dict:
+    """Does moving the DATA to the compute's region pay off, or should it stay? Follow-on to
+    data_locality_egress_check. Give where the data is now, where compute runs, how many GB you would
+    migrate once, and how many GB a month cross between them today. Returns the payback in months, the
+    one-off vs monthly egress cost and transfer carbon, and the net over the horizon (default 12 months).
+    Egress only: storage prices, request charges, downtime and effort are not included. Ask the user for
+    the GB figures rather than assuming them."""
+    if data_gb_to_migrate <= 0 or monthly_cross_boundary_gb < 0 or not 0 < horizon_months <= 120:
+        return {"error": "data_gb_to_migrate must be > 0, monthly_cross_boundary_gb >= 0, and "
+                         "horizon_months between 0 and 120."}
+    return with_hint(await migration_service.migration_payoff(
+        _repo, data_provider, data_region, compute_provider, compute_region,
+        data_gb_to_migrate, monthly_cross_boundary_gb, horizon_months,
+    ))
+
+
+@mcp.tool(annotations=LIVE_DATA_TOOL)
+async def region_move_justification(
+    from_provider: str,
+    from_region: str,
+    to_provider: str,
+    to_region: str,
+    vcpu: float,
+    ram_gb: float,
+    hours_per_month: float = 730,
+    user_lat: Optional[float] = None,
+    user_lon: Optional[float] = None,
+    monthly_cross_boundary_gb: float = 0,
+) -> dict:
+    """A short, paste-ready paragraph justifying a region choice, for a pull request or decision record.
+    Give the current and proposed region, the service size, and optionally the users' lat/lon (for
+    latency) and the GB a month that would still cross to data left behind (for egress and the net
+    carbon). Returns `pr_text` plus the underlying `facts`. If the move is not an improvement the text
+    says so. Show the user the text and the quality labels; it formats numbers GreenPick already
+    computes, and the wording should be reviewed before it is pasted."""
+    if not 0 < hours_per_month <= 744 or monthly_cross_boundary_gb < 0:
+        return {"error": "hours_per_month must be between 0 and 744, and monthly_cross_boundary_gb >= 0."}
+    return with_hint(await justification_service.region_move_justification(
+        _repo, from_provider, from_region, to_provider, to_region, vcpu, ram_gb,
+        hours_per_month, user_lat, user_lon, monthly_cross_boundary_gb,
+    ))
 
 
 @mcp.tool(annotations=LIVE_DATA_TOOL)

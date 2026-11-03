@@ -228,7 +228,7 @@ touch the financial-engineering half or anything needing the actual bill. Carbon
 
 ### Graphics / visuals (for demo + README)
 - ✅ Four SVGs in `docs/img/`: region-carbon-30x (hero — same H100 run, 30× between Stockholm/Sydney), cleanest-hours-us-west-2 (24h curve, ~57% overnight), egress-by-tier (the $270→$30-60/$255-360 correction), decision-flow (where→check→when). Real data, self-labelled directional. Hero + curve embedded in demo.md.
-- 🔭 "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.
+- ✅ SHIPPED 0.6.0 (`migration_payoff`): "Does moving my data to the greener region (not just compute) pay off over 12 months?" — amortize a one-time migration-egress cost against ongoing carbon saving. Natural follow-on to `data_locality_egress_check`.
 
 ### Data residency / sovereignty
 - ✅ "Would moving compute to this region break data-residency rules (e.g. GDPR)?" — SHIPPED as a residency-AWARENESS flag (NOT a compliance checker): `jurisdiction` tags in regions.json + a neutral cross-jurisdiction heads-up on compare/greener_alternative, estimate_training_carbon, and data_locality_egress_check, with a hard "not legal advice, confirm with governance" disclaimer. **Spike findings below.**
@@ -254,7 +254,7 @@ touch the financial-engineering half or anything needing the actual bill. Carbon
 - 🔭 "Include my CDN / edge locations in the carbon picture." — multi-location aggregate.
 
 ### Reporting / decision-capture (lower priority — drifts toward disclosure, which we said we're NOT)
-- 🔭 "Give me a one-paragraph justification for choosing this region, for my PR description." — formats an existing recommendation as prose. Cheap, high-charm, no new data.
+- ✅ SHIPPED 0.6.0 (`region_move_justification`): "Give me a one-paragraph justification for choosing this region, for my PR description." — formats an existing recommendation as prose. Cheap, high-charm, no new data.
 - 🔭 "What would I save (carbon + $) by making all these changes?" — aggregate across several recommendations.
 - 🔭 **Sources & verification** — surface the AUTHORITATIVE primary source for each number GreenPick states ("~$0.01-0.02/GB cross-region; confirm at <AWS Data Transfer pricing>"), so "directional, go verify" says *where*. Completes the honesty posture.
   - **Low-rot, and the right way to handle data we deliberately keep directional:** a LINK to a provider's pricing page stays current on its own — unlike EMBEDDING fast-changing data (the trap we've refused for egress/CFE/adequacy). Links give the user live precision without us owning the maintenance.

@@ -57,6 +57,17 @@ def _bump_severity_for_volume(severity: str, gb: float) -> str:
     return order[base]
 
 
+def egress_rate_range(locality: str, data_provider: str) -> tuple[float | None, float | None]:
+    """LOW-HIGH $/GB for moving bytes across the given locality tier (see _classify)."""
+    tier = pricing().get("_egress_tiers_usd_per_gb", {}).get(locality, {})
+    low, high = tier.get("low"), tier.get("high")
+    if locality == "cross_cloud":
+        prov_internet = (pricing().get(data_provider) or {}).get("egress_usd_per_gb")
+        if prov_internet is not None and high is not None:
+            high = max(high, prov_internet)   # don't under-quote this provider's internet rate
+    return low, high
+
+
 async def data_locality_check(
     repo: CarbonRepository,
     compute_provider: Provider,
@@ -89,14 +100,7 @@ async def data_locality_check(
     # Egress is a TIER LADDER by where the bytes cross — not one flat rate. Price the tier we just
     # classified, as a LOW-HIGH range (region-pair rates vary). For cross-cloud/internet the rate
     # is provider-specific, so anchor the high end to the data provider's own internet rate.
-    tiers = pricing().get("_egress_tiers_usd_per_gb", {})
-    tier = tiers.get(locality, {})
-    rate_low = tier.get("low")
-    rate_high = tier.get("high")
-    if locality == "cross_cloud":
-        prov_internet = (pricing().get(data_provider) or {}).get("egress_usd_per_gb")
-        if prov_internet is not None and rate_high is not None:
-            rate_high = max(rate_high, prov_internet)   # don't under-quote this provider's internet rate
+    rate_low, rate_high = egress_rate_range(locality, data_provider)
     cost_low = round(monthly_cross_boundary_gb * rate_low, 2) if rate_low is not None else None
     cost_high = round(monthly_cross_boundary_gb * rate_high, 2) if rate_high is not None else None
 

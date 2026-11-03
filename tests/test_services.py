@@ -1802,7 +1802,7 @@ def test_every_tool_declares_all_four_annotation_hints():
     import asyncio
     from greenpick import server
     tools = asyncio.run(server.mcp.list_tools())
-    assert len(tools) == 17
+    assert len(tools) == 19
     for t in tools:
         a = t.annotations
         assert a is not None, t.name
@@ -1909,3 +1909,62 @@ async def test_locality_summary_is_first_key_and_flags_missing_verdict():
     assert "net win" in yes["summary"].lower() and not yes["summary"].startswith("NO NET VERDICT")
     same = (await ls.data_locality_check(MockCarbonRepository(), "aws", "us-east-1", "aws", "us-east-1", 100)).model_dump()
     assert next(iter(same)) == "summary" and same["summary"]
+
+
+# --- 0.6.0: region_move_justification and migration_payoff ---
+@pytest.mark.asyncio
+async def test_justification_win_with_data_left_behind():
+    from greenpick.services import justification_service as js
+    r = await js.region_move_justification(
+        MockCarbonRepository(), "aws", "us-east-1", "aws", "eu-north-1", 4, 16,
+        user_lat=40.71, user_lon=-74.01, monthly_cross_boundary_gb=100)
+    f = r["facts"]
+    assert next(iter(r)) == "summary" and f["monthly_kg_co2_saving"] > 0
+    assert f["net_monthly_kg_co2_saving_after_transfer"] == round(
+        f["monthly_kg_co2_saving"] - f["est_monthly_transfer_kg_co2"], 2)
+    assert f["added_latency_ms"] > 0 and "RESIDENCY" in f["residency_note"]
+    t = r["pr_text"]
+    assert "cuts its estimated grid carbon" in t and "net saving" in t and "not measurements" in t
+
+
+@pytest.mark.asyncio
+async def test_justification_says_so_when_move_is_worse_or_data_assessment_missing():
+    from greenpick.services import justification_service as js
+    worse = await js.region_move_justification(MockCarbonRepository(), "aws", "eu-north-1", "aws", "us-east-1", 4, 16)
+    assert worse["facts"]["monthly_kg_co2_saving"] < 0
+    assert "RAISE" in worse["pr_text"] and "not justified" in worse["pr_text"]
+    assert worse["summary"].endswith("CO2 a month).") and "not an improvement" in worse["summary"]
+    assert "was not assessed" in worse["pr_text"]          # no GB given: says what is not included
+
+
+@pytest.mark.asyncio
+async def test_justification_flags_backfire():
+    from greenpick.services import justification_service as js
+    r = await js.region_move_justification(
+        MockCarbonRepository(), "aws", "us-east-1", "aws", "eu-north-1", 1, 2, monthly_cross_boundary_gb=100000)
+    assert r["facts"]["net_monthly_kg_co2_saving_after_transfer"] < 0 and "backfires" in r["pr_text"]
+
+
+@pytest.mark.asyncio
+async def test_migration_payoff_months_equal_ratio_and_verdicts():
+    from greenpick.services import migration_service as ms
+    args = ("aws", "us-east-1", "aws", "eu-north-1")
+    ok = await ms.migration_payoff(MockCarbonRepository(), *args, 500, 250)
+    assert ok["payback_months"] == 2.0 and ok["verdict"] == "pays_back" and next(iter(ok)) == "summary"
+    assert ok["net_over_horizon_kg_co2"] == round(12 * ok["monthly_transfer_kg_co2_avoided"]
+                                                  - ok["one_off_transfer_kg_co2"], 2)
+    assert ok["net_over_horizon_usd_low"] <= ok["net_over_horizon_usd_high"]
+    slow = await ms.migration_payoff(MockCarbonRepository(), *args, 5000, 100)
+    assert slow["payback_months"] == 50.0 and slow["verdict"] == "does_not_pay_back"
+    none = await ms.migration_payoff(MockCarbonRepository(), *args, 500, 0)
+    assert none["verdict"] == "no_ongoing_traffic" and none["payback_months"] is None
+    same = await ms.migration_payoff(MockCarbonRepository(), "aws", "us-east-1", "aws", "us-east-1", 500, 10)
+    assert same["verdict"] == "already_co_located"
+
+
+@pytest.mark.asyncio
+async def test_new_tools_validate_inputs():
+    bad = await _tool("migration_payoff")("aws", "us-east-1", "aws", "eu-north-1", 0, 10)
+    assert "error" in bad
+    bad2 = await _tool("region_move_justification")("aws", "us-east-1", "aws", "eu-north-1", 4, 16, hours_per_month=0)
+    assert "error" in bad2
