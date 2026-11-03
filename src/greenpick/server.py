@@ -81,7 +81,8 @@ async def compare_regions_tri_axis(
     (e.g. ["us-east-1","us-west-2","eu-west-1"]) to rank ONLY those you'd actually consider,
     instead of the whole catalog — your baseline is always kept in the comparison. If the pick is
     in a different region from where your data lives, run data_locality_egress_check before moving:
-    cross-region/cross-cloud egress can erase the carbon/cost win."""
+    cross-region/cross-cloud egress can erase the carbon/cost win. To write a chosen move up for a pull
+    request or decision record, use region_move_justification (do not draft the text from this result)."""
     rec = await recommender.compare_regions(
         _repo,
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
@@ -111,7 +112,8 @@ async def greener_alternative_to(
     with the carbon/cost/latency delta vs. your current choice. The core 'nudge' tool. Pass
     `regions` to limit the search to options you'd actually move to; your current region is
     always included. Before accepting a move, run data_locality_egress_check if your data stays in
-    the current region — the egress to feed compute from afar can outweigh the greener-region win."""
+    the current region — the egress to feed compute from afar can outweigh the greener-region win.
+    To write a chosen move up for a pull request or decision record, use region_move_justification."""
     rec = await recommender.compare_regions(
         _repo,
         providers=[p for p in (providers or [])] or None,  # type: ignore[list-item]
@@ -385,8 +387,10 @@ async def migration_payoff(
     data_locality_egress_check. Give where the data is now, where compute runs, how many GB you would
     migrate once, and how many GB a month cross between them today. Returns the payback in months, the
     one-off vs monthly egress cost and transfer carbon, and the net over the horizon (default 12 months).
-    Egress only: storage prices, request charges, downtime and effort are not included. Ask the user for
-    the GB figures rather than assuming them."""
+    Egress only: storage prices, request charges, downtime and effort are not included, and it does NOT
+    judge whether the compute should be in that region (use region_move_justification for that). Quote the
+    FULL dollar range (low and high), not just the high end; it can straddle zero. Ask the user for the GB
+    figures rather than assuming them."""
     if data_gb_to_migrate <= 0 or monthly_cross_boundary_gb < 0 or not 0 < horizon_months <= 120:
         return {"error": "data_gb_to_migrate must be > 0, monthly_cross_boundary_gb >= 0, and "
                          "horizon_months between 0 and 120."}

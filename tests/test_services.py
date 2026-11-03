@@ -1968,3 +1968,25 @@ async def test_new_tools_validate_inputs():
     assert "error" in bad
     bad2 = await _tool("region_move_justification")("aws", "us-east-1", "aws", "eu-north-1", 4, 16, hours_per_month=0)
     assert "error" in bad2
+
+
+# --- 0.6.1: migration summary is honest about a dollar range that straddles zero ---
+@pytest.mark.asyncio
+async def test_migration_summary_flags_dollar_range_straddling_zero():
+    from greenpick.services import migration_service as ms
+    args = ("aws", "us-east-1", "aws", "eu-north-1")
+    r = await ms.migration_payoff(MockCarbonRepository(), *args, 2000, 300)
+    assert r["verdict"] == "pays_back" and r["net_over_horizon_usd_low"] < 0 < r["net_over_horizon_usd_high"]
+    assert "either side of zero" in r["summary"] and "Egress only" in r["summary"]
+    clear = await ms.migration_payoff(MockCarbonRepository(), *args, 500, 300)
+    assert "either side of zero" not in clear["summary"] and "Egress only" in clear["summary"]
+    assert "Egress only" in (await ms.migration_payoff(MockCarbonRepository(), *args, 8000, 300))["summary"]
+
+
+def test_move_tools_point_to_the_justification_tool():
+    import asyncio
+    from greenpick import server
+    desc = {t.name: t.description for t in asyncio.run(server.mcp.list_tools())}
+    assert "region_move_justification" in desc["compare_regions_tri_axis"]
+    assert "region_move_justification" in desc["greener_alternative_to"]
+    assert "FULL dollar range" in desc["migration_payoff"]

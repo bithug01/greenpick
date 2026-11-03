@@ -69,6 +69,8 @@ async def migration_payoff(
     residency = residency_service.residency_flag(
         data_provider, data_region, compute_provider, compute_region)
 
+    straddle = (net_usd is not None and net_usd[0] < 0 < net_usd[1])
+    egress_only = " Egress only: this does not judge whether the compute should be in that region."
     if monthly_cross_boundary_gb <= 0:
         verdict = "no_ongoing_traffic"
         summary = (f"Moving the data buys no egress saving: no GB a month cross between "
@@ -79,12 +81,17 @@ async def migration_payoff(
         summary = (f"Moving the data too pays back in about {payback_months:g} months "
                    f"(~{data_gb_to_migrate:,.0f} GB once vs ~{monthly_cross_boundary_gb:,.0f} GB a month "
                    f"no longer crossing), within your {horizon_months:g}-month horizon.")
+        if straddle:
+            summary += (f" In dollars it could land either side of zero over the horizon "
+                        f"(net ${net_usd[0]:,.0f} to ${net_usd[1]:,.0f}); the carbon saving is "
+                        f"{'positive' if net_kg and net_kg > 0 else 'not positive'} (~{net_kg:,.1f} kg).")
+        summary += egress_only
     else:
         verdict = "does_not_pay_back"
         summary = (f"Moving the data too does NOT pay back within {horizon_months:g} months: it takes "
                    f"about {payback_months:g} months (~{data_gb_to_migrate:,.0f} GB once vs "
                    f"~{monthly_cross_boundary_gb:,.0f} GB a month no longer crossing). Leave the data "
-                   "where it is, or re-check the volumes.")
+                   "where it is, or re-check the volumes.") + egress_only
 
     return {
         "summary": summary,
