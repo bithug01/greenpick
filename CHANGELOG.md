@@ -4,6 +4,10 @@ All notable changes to GreenPick. Dates are the release commit's date. Versions 
 [PyPI](https://pypi.org/project/greenpick/) and the
 [MCP Registry](https://registry.modelcontextprotocol.io/); each has a matching git tag.
 
+## 0.6.2 - 2026-11-03
+- Utilisation inputs (`rightsizing_check`, `estimate_training_carbon`) must be fractions between 0
+  and 1. A percentage such as 15 now returns an error suggesting 0.15, instead of being read as 1,500%.
+
 ## 0.6.1 - 2026-11-03
 - `migration_payoff` now says when its dollar range crosses zero (a small net loss is possible even
   when carbon improves), and that it judges the data move only, not where compute should run.

@@ -60,6 +60,18 @@ accuracy. Use explain_methodology_and_limits when asked how a number was produce
 """
 
 mcp = FastMCP("greenpick", instructions=INSTRUCTIONS)
+
+
+def _fraction_error(name: str, value: Optional[float], allow_zero: bool = False) -> Optional[str]:
+    """Utilisation inputs are fractions (0.15 = 15%). A value like 15 is almost always a percentage;
+    say so rather than silently reading it as 1,500%."""
+    if value is None:
+        return None
+    low_ok = value >= 0 if allow_zero else value > 0
+    if low_ok and value <= 1:
+        return None
+    hint = f" Did you mean {value / 100:g}?" if 1 < value <= 100 else ""
+    return (f"{name} must be a fraction between 0 and 1 (0.15 means 15%); got {value:g}.{hint}")
 _repo = get_repository()
 
 
@@ -247,6 +259,11 @@ async def rightsizing_check(
     Returns the right-sized target (keeps ~40% headroom) with the monthly $ AND kg CO2 saving. Lead
     with the cost number, carbon is the twin. Directional, design-time — uses the utilisation you
     report, not a reading of your fleet."""
+    for name, value, zero in (("cpu_utilization", cpu_utilization, False),
+                              ("ram_utilization", ram_utilization, True)):
+        err = _fraction_error(name, value, allow_zero=zero)
+        if err:
+            return {"provider": provider, "region": region, "error": err}
     advice = await rightsizing_service.rightsizing_check(
         _repo, provider, region, vcpu, ram_gb, cpu_utilization,  # type: ignore[arg-type]
         ram_utilization=ram_utilization, hours_per_month=hours_per_month,
@@ -470,7 +487,11 @@ async def estimate_training_carbon(
     portable and deferrable, so this combines region choice with cleanest-hours timing. Directional
     (TDP-based energy); GPU availability per region is NOT checked - verify your card is offered there.
     Training data is often large: if your dataset lives in another region, run data_locality_egress_check
-    before shipping the job to the greenest region - the data egress can outweigh the carbon saving."""
+    before shipping the job to the greenest region - the data egress can outweigh the carbon saving.
+    `utilization` is an optional fraction of TDP (0..1, e.g. 0.6 for 60%)."""
+    err = _fraction_error("utilization", utilization)
+    if err:
+        return {"gpu": gpu, "error": err}
     advice = await training_service.estimate_training_carbon(
         _repo, gpu, gpu_count, gpu_hours,  # type: ignore[arg-type]
         region=region, provider=provider, utilization=utilization,  # type: ignore[arg-type]

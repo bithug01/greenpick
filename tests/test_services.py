@@ -2006,3 +2006,30 @@ def test_notebook_prompt_lists_every_tool_and_no_unknown_ones():
         if line.startswith("- ") and " -> " in line:
             routed |= set(re.findall(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", line.split(" -> ", 1)[1]))
     assert routed and routed <= names, f"unknown tool names in the routing list: {sorted(routed - names)}"
+
+
+# --- 0.6.2: a percentage passed as a utilisation fraction is rejected, not read as 1,500% ---
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad", [15, 1.5, 0, -0.1, 150])
+async def test_rightsizing_rejects_non_fraction_cpu_utilization(bad):
+    r = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=bad)
+    assert "error" in r and "fraction" in r["error"]
+    if bad == 15:
+        assert "Did you mean 0.15?" in r["error"]
+
+
+@pytest.mark.asyncio
+async def test_rightsizing_fraction_still_works_and_ram_is_checked(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", MockCarbonRepository())
+    ok = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15)
+    assert "error" not in ok and ok["recommended_vcpu"] == 4
+    bad = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32,
+                                           cpu_utilization=0.15, ram_utilization=20)
+    assert "ram_utilization" in bad["error"] and "0.2" in bad["error"]
+
+
+@pytest.mark.asyncio
+async def test_training_rejects_percentage_utilization():
+    r = await _tool("estimate_training_carbon")(gpu="a100", gpu_count=8, gpu_hours=40, utilization=60)
+    assert "error" in r and "Did you mean 0.6?" in r["error"]
