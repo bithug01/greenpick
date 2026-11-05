@@ -40,8 +40,20 @@ async def info():
                 init = await s.initialize()
                 return init.instructions, [t.name for t in (await s.list_tools()).tools]
 
+async def schema(tool):
+    with open("greenpick-server.log", "w") as errlog:
+        async with stdio_client(params, errlog=errlog) as (r, w):
+            async with ClientSession(r, w) as s:
+                await s.initialize()
+                t = next(t for t in (await s.list_tools()).tools if t.name == tool)
+                props = t.inputSchema.get("properties", {})
+                req = t.inputSchema.get("required", [])
+                return {"required": req, "optional": [p for p in props if p not in req]}
+
 - Then call info(), print the server instructions and ALL tool names (do not truncate), and follow
   those instructions for the rest of the session.
+- Before you call a tool for the first time, or show me an example call, run schema("<tool>") and use
+  ONLY the parameter names it returns. Never guess parameter names.
 
 PICK THE RIGHT TOOL (do not answer from memory, and do not substitute a different tool)
 - Switch off dev/test/staging outside working hours -> offhours_check
@@ -85,6 +97,8 @@ REPORTING RULES
 - **Install from PyPI and connect over stdio.** This is the supported route (see the README's quick
   start). Cloning the repo or importing the server object inside the notebook process is where most
   setup problems come from.
+- **Check a tool's parameters first.** Assistants otherwise guess plausible parameter names, and the
+  call fails. `schema()` reads the real names from the server.
 - **Print the server instructions.** The server sends guidance to every client on connect. A helper
   that never prints it keeps it from the assistant.
 - **A tool-choice list.** Assistants tend to reach for the first tool that looks close. Naming the
