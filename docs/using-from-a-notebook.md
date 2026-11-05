@@ -83,13 +83,15 @@ REPORTING RULES
 4. Lead with money when there is a dollar figure. Always give the full low-high range, never only the
    high end, and say if a range crosses zero.
 5. Never invent inputs (GB, hours per week, regions, utilisation). If I did not give one, ask. If you
-   must assume, list every assumption at the end.
+   must assume, list every assumption at the end, including values carried over from an earlier
+   question.
 6. Pass on residency_note, live_data_hint and limitations when present.
 7. Write dollar amounts as "USD 20-40" or escape the sign as \$ so the notebook does not render them
    as maths.
 8. If a call fails, show the error and fix the arguments from the tool's schema. After two failures,
    stop and ask me; do not switch to a different approach.
 9. Make routine tool calls without asking permission.
+10. Answer each question once. No repeated summary sections.
 ````
 
 ## Why each part is there
