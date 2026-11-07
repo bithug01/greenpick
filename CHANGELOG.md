@@ -4,6 +4,14 @@ All notable changes to GreenPick. Dates are the release commit's date. Versions 
 [PyPI](https://pypi.org/project/greenpick/) and the
 [MCP Registry](https://registry.modelcontextprotocol.io/); each has a matching git tag.
 
+## 0.6.3 - 2026-11-07
+- New `verify_at` field on every result with carbon or cost figures: which kind of figure, what it is
+  based on, and the public page to check it against (grid operators, Ember via Our World in Data, the
+  cloud providers' pricing pages). Additive: no existing field changed.
+- `region_move_justification`: when a move already raises carbon, the text no longer adds a second
+  "backfires" sentence about data transfer.
+- README: notebook starter prompt link and the mcprush listing card now appear on PyPI.
+
 ## 0.6.2 - 2026-11-03
 - Utilisation inputs (`rightsizing_check`, `estimate_training_carbon`) must be fractions between 0
   and 1. A percentage such as 15 now returns an error suggesting 0.15, instead of being read as 1,500%.

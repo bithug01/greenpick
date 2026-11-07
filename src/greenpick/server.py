@@ -30,6 +30,7 @@ from .services import (
 )
 from .models import ServingHub
 from .services.data_hint import with_hint
+from .services.sources import with_sources
 from .data.typical_repository import typical_context
 
 # Sent to every MCP client at connect. Agents learn a server from its tool list, not its README, and
@@ -54,7 +55,8 @@ for a pull request, use region_move_justification.
 Every carbon figure carries source and quality fields. Report 'typical', 'mock', 'cached' or \
 'historical' values as such, never as live readings — including figures derived from them, such as a kg CO2 saving. \
 When a result includes live_data_hint, pass it on: it says why the data isn't live and how to turn \
-live data on. If a call fails or output is missing, say so rather than describing \
+live data on. Results with carbon or cost figures include verify_at: the public page behind each \
+figure, for anyone who wants to check it. If a call fails or output is missing, say so rather than describing \
 what the tool would return. GreenPick estimates; it does not measure running systems or report model \
 accuracy. Use explain_methodology_and_limits when asked how a number was produced.\
 """
@@ -308,9 +310,9 @@ def greenest_regions_on_average(
     norm rather than a single hour; use region_carbon_now for what the grid is doing today. Carbon only
     (no cost or latency; compare_regions_tri_axis weighs all three). Offline, needs no keys. Regions
     labelled annual_average have only a yearly national figure and are not month-specific."""
-    return typical_ranking_service.rank_regions(
+    return with_sources(typical_ranking_service.rank_regions(
         month=month, whole_year=whole_year, providers=providers, regions=regions, top_n=top_n,
-    )
+    ))
 
 
 @mcp.tool(annotations=LIVE_DATA_TOOL)

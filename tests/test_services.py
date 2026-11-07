@@ -1284,7 +1284,7 @@ def test_server_sends_instructions_that_lead_with_rightsizing():
     assert "mock" in text and "TOTAL" in text and "data_locality_egress_check" in text
     # Every tool named in the instructions actually exists.
     import re, asyncio
-    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note", "live_data_hint"}
+    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note", "live_data_hint", "verify_at"}
     registered = {t.name for t in asyncio.run(server.mcp.list_tools())}
     assert named <= registered, named - registered
 
@@ -2033,3 +2033,61 @@ async def test_rightsizing_fraction_still_works_and_ram_is_checked(monkeypatch):
 async def test_training_rejects_percentage_utilization():
     r = await _tool("estimate_training_carbon")(gpu="a100", gpu_count=8, gpu_hours=40, utilization=60)
     assert "error" in r and "Did you mean 0.6?" in r["error"]
+
+
+# --- 0.6.3: verify_at says where to check each carbon and cost figure (additive only) ---
+def test_verify_at_maps_sources_and_costs():
+    from greenpick.services.sources import verify_at
+    r = {"carbon_source": "typical_eia", "provider": "aws", "cost_now_usd_per_month": 10.0}
+    figs = {(v["figure"], v["url"]) for v in verify_at(r)}
+    assert ("grid carbon intensity", "https://www.eia.gov/electricity/gridmonitor/") in figs
+    assert ("compute cost", "https://aws.amazon.com/ec2/pricing/on-demand/") in figs
+    eg = verify_at({"data_location": "gcp/us-east4", "est_monthly_egress_usd_low": 1.0, "transfer_carbon_source": "ember_annual"})
+    assert {v["figure"] for v in eg} == {"data-transfer (egress) cost", "grid carbon intensity"}
+    assert verify_at({"provider": "aws", "net_over_horizon_usd_low": 3.0}) == []   # not a compute cost
+    assert verify_at({"note": "nothing to check"}) == []
+
+
+@pytest.mark.asyncio
+async def test_tools_add_verify_at_but_not_on_errors(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
+    r = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15)
+    assert {v["figure"] for v in r["verify_at"]} == {"grid carbon intensity", "compute cost"}
+    rank = _tool("greenest_regions_on_average")(month=7, regions=["us-west-2", "ap-northeast-1"])
+    assert any("ourworldindata" in v["url"] for v in rank["verify_at"])
+    bad = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=15)
+    assert "error" in bad and "verify_at" not in bad
+
+
+# --- The notebook starter prompt (docs/using-from-a-notebook.md) relies on these fields. ---
+# Testers and workshop attendees run that prompt against whatever version pip installs, so a
+# release must never rename or drop them.
+@pytest.mark.asyncio
+async def test_fields_the_notebook_prompt_relies_on(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
+    now = await _tool("region_carbon_now")(provider="aws", region="us-east-1")
+    assert {"source", "quality", "live_data_hint"} <= set(now)
+    eg = await _tool("data_locality_egress_check")(compute_provider="aws", compute_region="eu-north-1",
+                                                   data_provider="aws", data_region="us-east-1",
+                                                   monthly_cross_boundary_gb=100)
+    assert next(iter(eg)) == "summary" and eg["summary"].startswith("NO NET VERDICT")
+    assert {"residency_note", "limitations"} <= set(eg)
+    mp = await _tool("migration_payoff")("aws", "us-east-1", "aws", "eu-north-1", 2000, 300)
+    assert next(iter(mp)) == "summary" and "net_over_horizon_usd_low" in mp and "net_over_horizon_usd_high" in mp
+    pr = await _tool("region_move_justification")("aws", "us-east-1", "aws", "eu-north-1", 4, 16)
+    assert next(iter(pr)) == "summary" and pr["pr_text"]
+    off = await _tool("offhours_check")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16, hours_per_week_on=50)
+    assert {"monthly_usd_saving", "limitations"} <= set(off)
+    assert "error" in await _tool("offhours_check")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16, hours_per_week_on=200)
+    assert "error" in await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=15)
+
+
+@pytest.mark.asyncio
+async def test_reverse_pr_text_does_not_repeat_backfire():
+    from greenpick.services import justification_service as js
+    r = await js.region_move_justification(MockCarbonRepository(), "aws", "eu-north-1", "aws", "us-east-1",
+                                           4, 16, monthly_cross_boundary_gb=100)
+    assert "would RAISE" in r["pr_text"] and "backfires" not in r["pr_text"]
+    assert "unless the data moves too" not in r["pr_text"] and "on top." in r["pr_text"]

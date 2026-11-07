@@ -122,7 +122,11 @@ async def region_move_justification(
     if net_kg is not None:
         cost_part = (f" and about ${egress_low:,.0f}-${egress_high:,.0f} a month in egress"
                      if egress_low is not None else "")
-        if net_kg > 0:
+        if kg_saving <= 0:
+            parts.append(
+                f"The data stays in {from_provider}/{from_region} (~{monthly_cross_boundary_gb:,.0f} GB a "
+                f"month crossing), which adds about {transfer_kg:.1f} kg CO2{cost_part} on top.")
+        elif net_kg > 0:
             parts.append(
                 f"The data stays in {from_provider}/{from_region} (~{monthly_cross_boundary_gb:,.0f} GB a "
                 f"month crossing), which adds about {transfer_kg:.1f} kg CO2{cost_part}, "

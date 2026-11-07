@@ -180,8 +180,10 @@ def build_hint(result: dict) -> Optional[str]:
 
 
 def with_hint(result: dict) -> dict:
-    """Add `live_data_hint` to a tool result that uses fallback data; leave others unchanged."""
+    """Add `live_data_hint` to a tool result that uses fallback data, and `verify_at` (where to check
+    its carbon and cost figures) to any result that has them. Existing fields are left unchanged."""
+    from .sources import with_sources
     hint = build_hint(result)
     if hint:
         result["live_data_hint"] = hint
-    return result
+    return with_sources(result)
