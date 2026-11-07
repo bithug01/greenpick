@@ -196,6 +196,8 @@ flow-traced consumption. Cost is a ballpark, not a quote. Latency is a geographi
 
 ## Quick start
 
+<a href="https://mcprush.com/bithug01/greenpick-mcp"><img src="https://mcprush.com/badge/greenpick-mcp/card.svg" width="220" alt="GreenPick MCP server on mcprush" /></a>
+
 ```bash
 # Python 3.11+
 pip install greenpick          # from PyPI
