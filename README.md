@@ -109,7 +109,7 @@ backfire guards** — is the part nothing else puts together.
 - **Free data only.** No flow-traced consumption accounting; carbon forecast is relative, not absolute.
 
 Roadmap: data-format/engine efficiency advice, sub-national grid zones, CI/CD integration.
-See `docs/user-questions-backlog.md`.
+See `CHANGELOG.md` for what has shipped in each version.
 
 ## MCP tools
 
