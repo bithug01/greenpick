@@ -106,6 +106,132 @@ real decision, made at design time, in the editor. (Pairs well with the decision
 
 ---
 
+## 6. "I tested my tool on AI assistants, and they made things up" (the agent-honesty post)
+
+**Thesis:** An MCP tool isn't only used by people. An AI assistant reads it, picks a tool, fills in the
+inputs and summarises the result, and it fails in ways a human user doesn't. The fixes belong in the
+tool's design, not only in the prompt.
+
+**What actually happened in testing (Colab, Nov 2026):** an assistant skipped the pull-request tool
+and wrote its own promotional paragraph; invented inputs (data sizes, regions) without saying so;
+passed "15% CPU" as 15, which the tool read as 1,500% and reported "already sized right"; reported a
+"net saving" the tool had explicitly not computed; and quoted only the best end of a dollar range
+that crossed zero.
+
+**The fixes, each a design choice:** a one-line `summary` as the first field (partial printouts still
+show it); "NO NET VERDICT" when an input is missing, instead of silence; an error that says "did you
+mean 0.15?" instead of a silent wrong answer; tool descriptions that name the right tool for the job;
+and a starter prompt that makes the assistant read each tool's real parameters before calling it.
+
+**The insight to land:** if an assistant can misread your output, it will. Design results so the
+honest reading is the easiest one.
+
+---
+
+## 7. "Every number should say what kind of number it is" (the labelling post)
+
+**Thesis:** A confident-looking figure with no provenance is worse than a labelled estimate, because
+it looks the same as a real reading.
+
+**The mechanics:** every GreenPick carbon figure carries a `quality` label: `live` (a current grid
+reading), `typical` (this month's normal, from a year of real hourly data), `annual_average` (a sourced
+yearly national figure, for grids with no free hourly data). Results also carry `verify_at`, the public
+page behind each figure (grid operators, Ember via Our World in Data, the cloud providers' price pages),
+and a `live_data_hint` saying why a result isn't live and how to make it so.
+
+**The honest nuance:** labels only work if they're read. That links to post 6: assistants dropped
+them, which is why the starter prompt now insists on them.
+
+---
+
+## 8. "Free data isn't always free to use" (the licensing post)
+
+**Thesis:** For live grid data, licensing decides coverage more than engineering does.
+
+**The cases:**
+- **Sydney:** OpenElectricity's data is licensed CC BY-NC (non-commercial), which rules it out for an
+  MIT tool owned by a company. The clean alternative, AEMO's raw files, is a much bigger build.
+- **Tokyo:** TEPCO publishes excellent data (half-hourly, split by fuel, under an hour behind, no key),
+  but its terms require written permission for anything beyond personal use.
+- **OCCTO** (Japan's national grid coordinator) allows free reuse with attribution, but for Tokyo it
+  only links back to TEPCO's files.
+- **What works:** EIA (US), ENTSO-E (EU), Hydro-Québec and IESO (Canada), and Ember's CC BY yearly
+  figures as a labelled fallback everywhere else.
+
+**The insight to land:** "it's on a public website" and "I may build on it" are different questions.
+Check the terms before writing the parser.
+
+---
+
+## 9. "When does serverless actually save money and carbon?" (the break-even post)
+
+**Thesis:** Serverless is cheaper and cleaner for quiet or spiky services, and more expensive for busy
+ones. The useful answer is the break-even point, not a slogan.
+
+**The numbers (GreenPick 0.7.0, AWS us-east-1, list prices):** a small API on a 2 vCPU / 4 GB server at
+5% CPU costs about $80 a month always on. The same 1 million requests a month at 100 ms on Lambda with
+0.5 GB is about $1, and fits inside the free tier. Break-even is about 77 million requests a month at
+that duration and memory.
+
+**The honest nuance:** serverless bills time spent waiting on a database, which favours a server for
+I/O-heavy services; cold starts and time limits can rule it out regardless of price; and serverless
+carbon can only be a lower bound, because platform overhead isn't published. An idle server still draws
+power: about a fifth of its full-load CPU power at 0% load, on Cloud Carbon Footprint's figures.
+
+---
+
+## 10. "The cheapest hour is the one you don't run" (the off-hours post)
+
+**Thesis:** Switching non-production environments off outside working hours is the simplest FinOps win
+there is, and its carbon saving matches its cost saving exactly.
+
+**The number:** a 4 vCPU / 16 GB staging server in us-east-1 used 50 hours a week saves about $128 a
+month, about 70% of its compute cost, with the same ~70% off carbon. Both scale with running hours.
+
+**The honest nuance:** disks, IP addresses and snapshots still cost money while stopped; reserved
+capacity and savings plans are paid regardless, so the dollar saving can vanish (the carbon saving
+doesn't); and the saving only exists if something actually turns the environment off and on.
+
+---
+
+## 11. "Teaching cloud carbon to people who've never heard of MCP" (the teaching post)
+
+**Thesis:** You can teach a mixed audience to use an AI assistant with a tool server, and to check its
+work, without first teaching them how MCP works.
+
+**The approach:** one analogy (the assistant is a waiter, the tool server is the kitchen, the tools are
+the menu) and three checks for every answer: did it use a tool, is every number labelled, did it invent
+anything. Beginners can apply the checks; experts dig into the output behind them. Scenarios move from
+plain business questions (a mostly idle server costs money for nothing) to the trickier ones (the egress
+trap, a dollar range that crosses zero, a move the tool says not to make).
+
+**Best written after running a session,** with what attendees actually got stuck on.
+
+---
+
+## Refresh notes (checked 2026-11-10 against GreenPick 0.7.0)
+
+Ideas 1 to 5 were written in mid-October 2026, before most of the current tools existed.
+
+- **Idea 1:** still current. Strengthen the efficiency half with off-hours scheduling (idea 10) and
+  serverless (idea 9).
+- **Idea 2:** "turning off non-prod" and "scale-to-zero" are now built (`offhours_check`,
+  `serverless_check`), so the post can show them rather than propose them. "Pays back in N months" now
+  exists as `migration_payoff`.
+- **Idea 3:** add the later refusals: Tokyo stays on a yearly figure until the data licence allows live
+  use, and Azure serverless cost is left unpriced rather than guessed.
+- **Idea 4:** the egress figures still hold: 3 TB a month is about $30-60 across regions in one cloud
+  and $255-360 across clouds. Recheck the "saves 2 kg, adds 33 kg" example before quoting it: 3 TB now
+  adds about 31 kg of transfer carbon. Natural sequel: "should the data move too?" (`migration_payoff`).
+- **Idea 5:** the chain now has a fourth step, writing it up (`region_move_justification`), and a check
+  on the third (`verify_at` for every number).
+- **Stockholm vs Sydney:** about 27x on whole-year grid averages (19.7 vs 525 gCO2/kWh). The older
+  "30x" came from Sydney's hand-set placeholder, replaced by a sourced figure in 0.4.1.
+- **All numbers:** rerun them on the current version before publishing; typical values follow the
+  calendar month, and live data changes by the hour.
+
+---
+
 ## Notes on tone (for whoever writes these)
 - Lead with the counterintuitive or the honest-tradeoff, not the feel-good.
 - Every post should name where the easy story breaks — that's the credibility.
