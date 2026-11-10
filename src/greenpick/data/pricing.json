@@ -1,5 +1,5 @@
 {
-  "_comment": "DATED, STATIC pricing ballpark for v1. Deterministic \u2014 the LLM must never invent these. Figures are rough on-demand approximations for a general-purpose vCPU+RAM service and per-GB internet egress; refresh periodically and update _as_of. NOT a quote.",
+  "_comment": "DATED, STATIC pricing ballpark for v1. Deterministic — the LLM must never invent these. Figures are rough on-demand approximations for a general-purpose vCPU+RAM service and per-GB internet egress; refresh periodically and update _as_of. NOT a quote.",
   "_as_of": "2026-10-12",
   "_units": {
     "compute": "USD per vCPU-hour and USD per GB-RAM-hour",
@@ -7,9 +7,21 @@
   },
   "_egress_comment": "Egress is NOT one price — it's a tier ladder by WHERE the bytes cross. We price the locality tier (same-region / cross-region / cross-cloud+internet) as a LOW-HIGH RANGE because region-pair rates vary. Per-GB, USD, DIRECTIONAL list prices as of _as_of; excludes free-tier allowances, committed-use/negotiated discounts, and NAT/load-balancer processing fees. Not a quote. Keys: internet rate stays per-provider (differs most); same-region & cross-region tiers are broadly consistent across AWS/GCP/Azure so we use one shared range.",
   "_egress_tiers_usd_per_gb": {
-    "same_region": { "low": 0.0, "high": 0.01, "note": "Same region: free within an AZ over private IP; ~$0.01/GB each way if it crosses AZs." },
-    "cross_region_same_cloud": { "low": 0.01, "high": 0.02, "note": "Inter-region within one cloud: most pairs ~$0.01-0.02/GB; a few source regions/continent pairs run higher." },
-    "cross_cloud": { "low": 0.085, "high": 0.12, "note": "Leaving the cloud to another provider or the public internet: the expensive tier; GCP Premium ~$0.12, AWS ~$0.09, Azure ~$0.087 at entry bands." }
+    "same_region": {
+      "low": 0.0,
+      "high": 0.01,
+      "note": "Same region: free within an AZ over private IP; ~$0.01/GB each way if it crosses AZs."
+    },
+    "cross_region_same_cloud": {
+      "low": 0.01,
+      "high": 0.02,
+      "note": "Inter-region within one cloud: most pairs ~$0.01-0.02/GB; a few source regions/continent pairs run higher."
+    },
+    "cross_cloud": {
+      "low": 0.085,
+      "high": 0.12,
+      "note": "Leaving the cloud to another provider or the public internet: the expensive tier; GCP Premium ~$0.12, AWS ~$0.09, Azure ~$0.087 at entry bands."
+    }
   },
   "_egress_sources": "AWS/GCP/Azure published data-transfer pricing pages + corroborating 2026 guides (usage.ai, nops.io, egresscost.com, redresscompliance, bacancy, tatacommunications). Rounded to ranges; verify against the provider pricing page for a specific region pair.",
   "aws": {
@@ -27,5 +39,27 @@
     "compute_usd_per_gb_ram_hour": 0.0039,
     "egress_usd_per_gb": 0.087
   },
-  "_source": "Compute coefficients for [aws+azure+gcp] derived from Vantage live data using ONE matched method: general-purpose 4GB/vCPU families (AWS m5/m6i, GCP n2-standard, Azure D-series v5), on-demand Linux, mean $/vCPU across regions, 25% split to RAM. Egress remains static. Apples-to-apples DIRECTIONAL comparison, not a quote."
+  "_source": "Compute coefficients for [aws+azure+gcp] derived from Vantage live data using ONE matched method: general-purpose 4GB/vCPU families (AWS m5/m6i, GCP n2-standard, Azure D-series v5), on-demand Linux, mean $/vCPU across regions, 25% split to RAM. Egress remains static. Apples-to-apples DIRECTIONAL comparison, not a quote.",
+  "_serverless_usd": {
+    "_as_of": "2026-11-10",
+    "_comment": "On-demand list prices for request-driven serverless compute, before free tiers and discounts. DIRECTIONAL, not a quote. Azure Functions prices are not bundled (the public page renders prices client-side and could not be verified).",
+    "aws": {
+      "product": "AWS Lambda (event functions, x86, first tier)",
+      "usd_per_gb_second": 1.66667e-05,
+      "usd_per_million_requests": 0.2,
+      "free_requests": 1000000,
+      "free_gb_seconds": 400000,
+      "source": "https://aws.amazon.com/lambda/pricing/"
+    },
+    "gcp": {
+      "product": "Cloud Run (request-based billing, tier 1)",
+      "usd_per_vcpu_second": 2.4e-05,
+      "usd_per_gib_second": 2.5e-06,
+      "usd_per_million_requests": 0.4,
+      "free_requests": 2000000,
+      "free_vcpu_seconds": 180000,
+      "free_gib_seconds": 360000,
+      "source": "https://cloud.google.com/run/pricing"
+    }
+  }
 }

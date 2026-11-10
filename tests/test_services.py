@@ -1802,7 +1802,7 @@ def test_every_tool_declares_all_four_annotation_hints():
     import asyncio
     from greenpick import server
     tools = asyncio.run(server.mcp.list_tools())
-    assert len(tools) == 19
+    assert len(tools) == 20
     for t in tools:
         a = t.annotations
         assert a is not None, t.name
@@ -2091,3 +2091,68 @@ async def test_reverse_pr_text_does_not_repeat_backfire():
                                            4, 16, monthly_cross_boundary_gb=100)
     assert "would RAISE" in r["pr_text"] and "backfires" not in r["pr_text"]
     assert "unless the data moves too" not in r["pr_text"] and "on top." in r["pr_text"]
+
+
+# --- 0.7.0: utilisation-aware power and serverless_check ---
+def test_utilisation_power_spans_min_to_max_and_full_load_matches_flat_model():
+    from greenpick.services import carbon_service as cs
+    from greenpick.models import CarbonReading
+    assert cs.watts_per_vcpu_at("aws", 0) == 0.74 and cs.watts_per_vcpu_at("aws", 1) == 3.5
+    assert abs(cs.watts_per_vcpu_at("gcp", 0.5) - (0.71 + 0.5 * (4.26 - 0.71))) < 1e-9
+    wl = Workload(vcpu=4, ram_gb=16, hours_per_month=730)
+    rd = CarbonReading(region="us-east-1", provider="aws", g_co2_per_kwh=400, source="mock",
+                       timestamp="2026-11-10T00:00:00Z", quality="mock")
+    assert cs.estimate_kg_co2_per_month_at(wl, rd, 1.0) == cs.estimate_kg_co2_per_month(wl, rd)
+    assert cs.estimate_kg_co2_per_month_at(wl, rd, 0.05) < cs.estimate_kg_co2_per_month(wl, rd) / 2
+
+
+@pytest.mark.asyncio
+async def test_estimate_workload_carbon_utilisation_is_optional_and_additive(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
+    plain = await _tool("estimate_workload_carbon")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16)
+    assert "avg_cpu_utilization" not in plain and "estimated_kg_co2_per_month_at_full_load" not in plain
+    low = await _tool("estimate_workload_carbon")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16,
+                                                 avg_cpu_utilization=0.05)
+    assert low["estimated_kg_co2_per_month_at_full_load"] == plain["estimated_kg_co2_per_month"]
+    assert low["estimated_kg_co2_per_month"] < plain["estimated_kg_co2_per_month"]
+    bad = await _tool("estimate_workload_carbon")(provider="aws", region="us-east-1", vcpu=4, ram_gb=16,
+                                                 avg_cpu_utilization=5)
+    assert "Did you mean 0.05?" in bad["error"]
+
+
+@pytest.mark.asyncio
+async def test_serverless_check_quiet_vs_busy_and_breakeven(monkeypatch):
+    from greenpick import server
+    monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
+    t = _tool("serverless_check")
+    quiet = await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.05,
+                    monthly_requests=1_000_000, avg_duration_ms=100, function_memory_gb=0.5)
+    assert next(iter(quiet)) == "summary" and quiet["verdict"] == "serverless_cheaper"
+    assert quiet["within_free_tier"] is True and "free tier" in quiet["summary"]
+    busy = await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.6,
+                   monthly_requests=100_000_000, avg_duration_ms=100, function_memory_gb=0.5)
+    assert busy["verdict"] == "server_cheaper" and busy["monthly_usd_saving"] < 0
+    # The break-even request count is where serverless cost meets the server's.
+    be = quiet["breakeven_monthly_requests"]
+    at_be = await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.05,
+                    monthly_requests=be, avg_duration_ms=100, function_memory_gb=0.5)
+    assert abs(at_be["serverless_cost_usd_per_month"] - at_be["server_cost_usd_per_month"]) < 0.05
+    assert {v["figure"] for v in quiet["verify_at"]} >= {"compute cost", "serverless cost"}
+    run = await t(provider="gcp", region="us-central1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.05,
+                  monthly_requests=1_000_000, avg_duration_ms=100, function_memory_gb=0.5)
+    assert run["serverless_cost_usd_per_month"] is not None
+
+
+@pytest.mark.asyncio
+async def test_serverless_check_azure_is_carbon_only_and_inputs_validated():
+    t = _tool("serverless_check")
+    az = await t(provider="azure", region="eastus", vcpu=2, ram_gb=4, avg_cpu_utilization=0.05,
+                 monthly_requests=1_000_000, avg_duration_ms=100)
+    assert az["verdict"] == "carbon_only" and az["serverless_cost_usd_per_month"] is None
+    assert "error" in await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=5,
+                              monthly_requests=1000, avg_duration_ms=100)
+    assert "error" in await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.1,
+                              monthly_requests=1000, avg_duration_ms=0)
+    assert "error" in await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.1,
+                              monthly_requests=1000, avg_duration_ms=100, function_memory_gb=64)

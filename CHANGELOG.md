@@ -4,6 +4,14 @@ All notable changes to GreenPick. Dates are the release commit's date. Versions 
 [PyPI](https://pypi.org/project/greenpick/) and the
 [MCP Registry](https://registry.modelcontextprotocol.io/); each has a matching git tag.
 
+## 0.7.0 - 2026-11-10
+- New `serverless_check`: an always-on server vs. paying per request (AWS Lambda, Google Cloud Run) for
+  a mostly idle or spiky service. Monthly cost of each, the break-even request count, whether the traffic
+  fits the free tier, and estimated carbon (serverless as a lower bound). Azure is carbon only.
+- `estimate_workload_carbon` takes an optional `avg_cpu_utilization`. CPU power then follows load (Cloud
+  Carbon Footprint min/max watts per vCPU) instead of assuming full load. Without it, results are unchanged.
+- 20 tools.
+
 ## 0.6.3 - 2026-11-07
 - New `verify_at` field on every result with carbon or cost figures: which kind of figure, what it is
   based on, and the public page to check it against (grid operators, Ember via Our World in Data, the

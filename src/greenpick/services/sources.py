@@ -35,6 +35,9 @@ _PRICING = {
               "https://azure.microsoft.com/en-us/pricing/details/bandwidth/"),
 }
 _PROVIDER_NAME = {"aws": "AWS", "gcp": "Google Cloud", "azure": "Azure"}
+_SERVERLESS = {"aws": ("AWS Lambda", "https://aws.amazon.com/lambda/pricing/"),
+               "gcp": ("Cloud Run", "https://cloud.google.com/run/pricing"),
+               "azure": ("Azure Functions", "https://azure.microsoft.com/en-us/pricing/details/functions/")}
 
 _SOURCE_KEYS = ("source", "carbon_source", "transfer_carbon_source",
                 "from_carbon_source", "to_carbon_source")
@@ -56,7 +59,7 @@ def verify_at(result: dict) -> list[dict]:
     """The primary sources behind the carbon and cost figures in a tool result (may be empty)."""
     carbon: set[str] = set()
     providers: set[str] = set()
-    has_cost = has_egress = False
+    has_cost = has_egress = has_serverless = False
     for key, value in _walk(result):
         if key in _SOURCE_KEYS and isinstance(value, str):
             base = value[len("typical_"):] if value.startswith("typical_") else value
@@ -71,7 +74,9 @@ def verify_at(result: dict) -> list[dict]:
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             if "usd" not in key:
                 continue
-            if "egress" in key:
+            if "serverless" in key:
+                has_serverless = True
+            elif "egress" in key:
                 has_egress = True
             elif "cost" in key or "saving" in key:      # compute cost or a saving on it
                 has_cost = True
@@ -86,6 +91,9 @@ def verify_at(result: dict) -> list[dict]:
         if has_cost:
             out.append({"figure": "compute cost", "based_on": f"{name} on-demand list prices (dated)",
                         "url": compute_url})
+        if has_serverless:
+            product, url = _SERVERLESS[prov]
+            out.append({"figure": "serverless cost", "based_on": f"{product} list prices (dated)", "url": url})
         if has_egress:
             out.append({"figure": "data-transfer (egress) cost",
                         "based_on": f"{name} data-transfer prices (dated)", "url": transfer_url})

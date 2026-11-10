@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
   <img src="https://img.shields.io/badge/tests-passing-brightgreen" alt="Tests: passing" />
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+" />
-  <img src="https://img.shields.io/badge/MCP%20tools-19-0ea5e9" alt="MCP tools: 19" />
+  <img src="https://img.shields.io/badge/MCP%20tools-20-0ea5e9" alt="MCP tools: 20" />
 </p>
 
 A **design-time sustainability co-pilot** that runs as an MCP server inside your vibe-coding
@@ -22,7 +22,7 @@ environment (Cursor / Claude Code / Kiro). Ask it where to deploy, when to run a
 right-size — and it answers with an honest **carbon + cost + latency** tradeoff, in-editor, in
 seconds. (It responds when you ask; auto-nudging on infra-code changes is on the roadmap.)
 
-> **Status: working — 19 tools.** Live carbon for US (EIA-930), EU (ENTSO-E) and Canada (Hydro-Québec,
+> **Status: working — 20 tools.** Live carbon for US (EIA-930), EU (ENTSO-E) and Canada (Hydro-Québec,
 > IESO — no key needed), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
 > GPU-training **and LLM-inference** carbon, right-sizing, serving-pattern and data-locality/residency
@@ -113,7 +113,7 @@ See `docs/user-questions-backlog.md`.
 
 ## MCP tools
 
-19 tools, grouped by what you're trying to do.
+20 tools, grouped by what you're trying to do.
 
 ### Pick a region
 
@@ -146,6 +146,7 @@ See `docs/user-questions-backlog.md`.
 |------|--------------|
 | `greener_instance_family` | A greener same-size family in the same region via perf-per-watt (newer generation / ARM Graviton-class does the same work on less energy). |
 | `rightsizing_check` | Right-sizing (the #1 FinOps win) with a carbon twin: if you're over-provisioned, a smaller size cuts **both** cost and carbon → the right-sized target with monthly $ and kg CO₂ saving. |
+| `serverless_check` | For a mostly idle or spiky service: an always-on server vs. paying per request (AWS Lambda, Cloud Run). Monthly cost of each, the break-even request count, and estimated carbon (serverless as a lower bound). |
 | `offhours_check` | For dev/test/staging that doesn't need to run 24/7: the monthly $ and kg CO2 saved by running it only N hours a week. Compute only, directional. |
 | `data_locality_egress_check` | Warn when running compute away from where your data lives backfires: directional egress $ + coarse transfer carbon, and whether a greener-region move is still a net win. |
 | `migration_payoff` | Does moving the **data** to the compute's region pay off? Payback in months, one-off vs monthly egress and transfer carbon, net over 12 months. Egress only. |

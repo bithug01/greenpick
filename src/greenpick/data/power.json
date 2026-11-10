@@ -3,5 +3,19 @@
   "watts_per_vcpu": 3.5,
   "watts_per_gb_ram": 0.4,
   "pue_default": 1.2,
-  "_sources": "Coefficients are order-of-magnitude figures consistent with public cloud power-model literature (e.g. Cloud Carbon Footprint methodology). Replace with cited values before any non-directional use."
+  "_sources": "Coefficients are order-of-magnitude figures consistent with public cloud power-model literature (e.g. Cloud Carbon Footprint methodology). Replace with cited values before any non-directional use.",
+  "_utilization_comment": "Used only when a caller gives a CPU utilisation. Per-vCPU power scales from an idle minimum to a full-load maximum: watts = min + utilisation x (max - min) (the Cloud Carbon Footprint / Etsy Cloud Jewels method). Without a utilisation GreenPick keeps the flat watts_per_vcpu above, which equals the AWS full-load figure, so it is a conservative (high) estimate. RAM watts do not change with load.",
+  "min_watts_per_vcpu": {
+    "aws": 0.74,
+    "gcp": 0.71,
+    "azure": 0.78
+  },
+  "max_watts_per_vcpu": {
+    "aws": 3.5,
+    "gcp": 4.26,
+    "azure": 3.76
+  },
+  "serverless_assumed_utilization": 0.5,
+  "serverless_mb_per_vcpu": 1792,
+  "_utilization_sources": "Cloud Carbon Footprint methodology, average min/max watts per vCPU by provider from SPECpower (https://www.cloudcarbonfootprint.org/docs/methodology/), checked 2026-11-10. Serverless: CCF's Lambda approach (1,792 MB = 1 vCPU; 50% average utilisation for hyperscale servers)."
 }

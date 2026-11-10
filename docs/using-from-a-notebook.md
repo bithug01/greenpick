@@ -57,6 +57,7 @@ async def schema(tool):
 
 PICK THE RIGHT TOOL (do not answer from memory, and do not substitute a different tool)
 - Switch off dev/test/staging outside working hours -> offhours_check
+- Mostly idle or spiky service: always-on server or serverless? -> serverless_check
 - Is this server oversized? -> rightsizing_check
 - A greener instance family in the same region -> greener_instance_family
 - Cleanest regions in a month or year -> greenest_regions_on_average

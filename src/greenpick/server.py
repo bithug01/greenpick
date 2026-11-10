@@ -1,4 +1,4 @@
-"""MCP server: exposes GreenPick's 19 tools over FastMCP.
+"""MCP server: exposes GreenPick's 20 tools over FastMCP.
 
 Thin layer — parse/validate inputs, call services, return JSON-friendly dicts. All math
 lives in services/; this file only wires tools to them.
@@ -26,7 +26,7 @@ from .services import (
     carbon_service, recommender, scheduling_service, instance_service, locality_service,
     training_service, forecast_service, serving_service, metric_scaffold_service,
     rightsizing_service, inference_service, offhours_service, typical_ranking_service,
-    justification_service, migration_service,
+    justification_service, migration_service, serverless_service,
 )
 from .models import ServingHub
 from .services.data_hint import with_hint
@@ -41,7 +41,8 @@ GreenPick advises on cloud infrastructure decisions BEFORE you deploy, weighing 
 latency together. Strongest uses, in order:
 1. Right-sizing (rightsizing_check): an over-provisioned instance cut to a standard, buyable size \
 saves money and carbon in the same move. Lead with the monthly dollar saving. For dev, test or other \
-environments that don't need to run 24/7, offhours_check shows what switching them off saves.
+environments that don't need to run 24/7, offhours_check shows what switching them off saves. For a \
+mostly idle or spiky service, serverless_check compares an always-on server with paying per request.
 2. Scheduling deferrable jobs: cleanest_hours_to_run (one-off), cleanest_time_of_day (recurring), \
 carbon_forecast (EU day-ahead).
 3. GPU training and LLM inference footprints: estimate_training_carbon (gpu_hours is the TOTAL across \
@@ -148,13 +149,19 @@ async def estimate_workload_carbon(
     vcpu: float,
     ram_gb: float,
     hours_per_month: float = 730,
+    avg_cpu_utilization: Optional[float] = None,
 ) -> dict:
     """Rough kgCO2/month for a workload running in a region. An ESTIMATE (documented power
-    model x grid intensity), not a measurement."""
+    model x grid intensity), not a measurement. Without avg_cpu_utilization it assumes the CPU is
+    fully busy (a conservative, high figure). Pass the observed average CPU utilisation as a fraction
+    (0.1 for 10%) for a more realistic figure: an idle server draws far less than a busy one."""
+    err = _fraction_error("avg_cpu_utilization", avg_cpu_utilization, allow_zero=True)
+    if err:
+        return {"provider": provider, "region": region, "error": err}
     reading = await carbon_service.carbon_now(_repo, provider, region)  # type: ignore[arg-type]
     wl = Workload(vcpu=vcpu, ram_gb=ram_gb, hours_per_month=hours_per_month)
     kg = carbon_service.estimate_kg_co2_per_month(wl, reading)
-    return with_hint({
+    out = {
         "provider": provider,
         "region": region,
         "estimated_kg_co2_per_month": kg,
@@ -162,7 +169,15 @@ async def estimate_workload_carbon(
         "carbon_source": reading.source,
         "carbon_quality": reading.quality,
         "note": "Estimate only: documented power model x grid intensity. Not a measurement.",
-    })
+    }
+    if avg_cpu_utilization is not None:
+        out["estimated_kg_co2_per_month_at_full_load"] = kg
+        out["estimated_kg_co2_per_month"] = carbon_service.estimate_kg_co2_per_month_at(
+            wl, reading, avg_cpu_utilization)
+        out["avg_cpu_utilization"] = avg_cpu_utilization
+        out["note"] = ("Estimate only. CPU power follows the utilisation you gave (Cloud Carbon Footprint "
+                       "min/max watts per vCPU); RAM power does not change with load. Not a measurement.")
+    return with_hint(out)
 
 
 @mcp.tool(annotations=LIVE_DATA_TOOL)
@@ -271,6 +286,37 @@ async def rightsizing_check(
         ram_utilization=ram_utilization, hours_per_month=hours_per_month,
     )
     return with_hint(advice.model_dump())
+
+
+@mcp.tool(annotations=LIVE_DATA_TOOL)
+async def serverless_check(
+    provider: str,
+    region: str,
+    vcpu: float,
+    ram_gb: float,
+    avg_cpu_utilization: float,
+    monthly_requests: float,
+    avg_duration_ms: float,
+    function_memory_gb: float = 1.0,
+) -> dict:
+    """Would serverless change the math? Compares an always-on server (its size and observed average CPU
+    utilisation as a fraction, 0.05 for 5%) with a request-driven serverless platform (AWS Lambda or
+    Google Cloud Run) for the same traffic: monthly requests, average duration per request in ms, and the
+    function's memory in GB. Returns the monthly cost of each, the request count where they break even,
+    and estimated carbon for each. Lead with the dollar figure. Serverless carbon is a LOWER BOUND
+    (platform overhead isn't published); cost is list price before free tiers. Azure serverless cost is
+    not priced (carbon only). Ask the user for traffic figures rather than assuming them."""
+    err = _fraction_error("avg_cpu_utilization", avg_cpu_utilization, allow_zero=True)
+    if err:
+        return {"provider": provider, "region": region, "error": err}
+    if monthly_requests < 0 or avg_duration_ms <= 0 or not 0.125 <= function_memory_gb <= 10.24:
+        return {"provider": provider, "region": region,
+                "error": "monthly_requests must be >= 0, avg_duration_ms > 0, and function_memory_gb "
+                         "between 0.125 and 10.24 (Lambda's range)."}
+    return with_hint(await serverless_service.serverless_check(
+        _repo, provider, region, vcpu, ram_gb, avg_cpu_utilization,
+        monthly_requests, avg_duration_ms, function_memory_gb,
+    ))
 
 
 @mcp.tool(annotations=LIVE_DATA_TOOL)

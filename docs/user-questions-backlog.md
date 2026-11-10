@@ -156,7 +156,7 @@ rightsizing_check, explain_methodology_and_limits._
 
 ### Workload shape (beyond the one always-on web service)
 - ✅ "I'm training a model for ~40 GPU-hours — where and when is that greenest?" — SHIPPED as `estimate_training_carbon` (GPU power table + region ranking + cleanest-hours timing). Verified: 1×H100×40h = 33 kWh, 96% region swing + further ~57% timing.
-- 🔭 "This is a spiky, mostly-idle service — does serverless change the carbon math?" — utilization-aware estimate (idle vs active watts), not flat always-on.
+- ✅ SHIPPED 0.7.0 (`serverless_check`, plus `avg_cpu_utilization` on `estimate_workload_carbon`): "This is a spiky, mostly-idle service — does serverless change the carbon math?" — utilization-aware estimate (idle vs active watts), not flat always-on.
 - 🔭 "Compare container vs VM vs serverless for the same workload's carbon." — needs a per-platform overhead model.
 - ✅ "What's the carbon of running this LLM inference?" — SHIPPED as `estimate_inference_carbon` (size class × output tokens × requests × live grid; low–high band; MoE handled; self-hosted-friendly, not a named-model leaderboard). Verified live: 1M req/mo @300 out-tok in Stockholm — small ~0.8–4.6 kg, frontier ~41–152 kg CO₂/mo (~50× size-class lever). +5 tests (65 passing). The inference-side sibling of `estimate_training_carbon`.
   - **Scope it as an ESTIMATOR, not a leaderboard.** Key on **model SIZE CLASS** (~8B / ~70B / ~400B-MoE) + token count + (optional) region — NOT named commercial products. Output directional Wh + gCO₂ for this usage, with the uncertainty stated as loudly as the network-energy coefficient.
