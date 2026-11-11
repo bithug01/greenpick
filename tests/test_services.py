@@ -1284,7 +1284,7 @@ def test_server_sends_instructions_that_lead_with_rightsizing():
     assert "mock" in text and "TOTAL" in text and "data_locality_egress_check" in text
     # Every tool named in the instructions actually exists.
     import re, asyncio
-    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note", "live_data_hint", "verify_at"}
+    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - {"wall_clock_hours", "gpu_hours", "residency_note", "live_data_hint", "verify_at", "data_attribution"}
     registered = {t.name for t in asyncio.run(server.mcp.list_tools())}
     assert named <= registered, named - registered
 
