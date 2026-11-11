@@ -36,5 +36,13 @@
     "B12": "Hydro reservoir", "B14": "Nuclear", "B15": "Other renewable",
     "B16": "Solar", "B17": "Waste", "B18": "Wind offshore", "B19": "Wind onshore",
     "B20": "Other"
+  },
+  "_comment_japan": "Maps TEPCO's area supply-and-demand column names (national unified format) to the same per-fuel factors above. Pumped storage (揚水), batteries (蓄電池), interconnectors (連系線) and the unclassified 'other' column (その他) are left out, as storage, imports and unknowns are for the other sources.",
+  "japan_fuel_to_factor": {
+    "tepco": {
+      "原子力": 12, "火力(LNG)": 490, "火力(石炭)": 820, "火力(石油)": 650,
+      "火力(その他)": 700, "水力": 24, "地熱": 38, "バイオマス": 230,
+      "太陽光発電実績": 48, "風力発電実績": 11
+    }
   }
 }

@@ -94,6 +94,8 @@ def _reason(provider: str, region: str) -> tuple[str, str]:
         if meta.get("ca_source"):
             from ..data.canada_repository import LABEL
             return "unavailable", LABEL[meta["ca_source"]]     # no key needed: it just didn't answer
+        if meta.get("jp_source"):
+            return "unavailable", "TEPCO"
         return "uncovered", ""
     if src == "eia":
         return needs("EIA_API_KEY", s.eia_api_key, "EIA") if meta.get("eia_ba") else ("wrong_source", "EIA (US only)")
@@ -158,7 +160,7 @@ def build_hint(result: dict) -> Optional[str]:
             parts.append(f"For live data{where}, set {detail} (free: {_KEYS[detail]}) in the server's "
                          f"environment: {TURN_ON_URL}")
         elif reason == "unavailable":
-            key_txt = "" if detail in ("Hydro-Québec", "IESO") else ", or check that the key is valid"
+            key_txt = "" if detail in ("Hydro-Québec", "IESO", "TEPCO") else ", or check that the key is valid"
             parts.append(f"{detail} didn't return data{where} just now, so GreenPick used its fallback. "
                          f"Try again later{key_txt}.")
         elif reason == "wrong_source":

@@ -3,6 +3,7 @@
 - US regions (have an `eia_ba`)        -> EIA
 - EU regions (have an `entsoe_eic`)    -> ENTSO-E
 - Canadian regions (have a `ca_source`) -> Hydro-Québec / IESO (no key needed)
+- Tokyo regions (have a `jp_source`)    -> TEPCO area data (no key needed; used with permission)
 - anything else                        -> typical / mock fallback (honestly labelled)
 
 Lets a single GREENPICK_CARBON_SOURCE=auto give live data on all three.
@@ -14,6 +15,7 @@ from .typical_repository import TypicalCarbonRepository
 from .eia_repository import EIARepository
 from .entsoe_repository import ENTSOERepository
 from .canada_repository import CanadaRepository
+from .japan_repository import JapanRepository
 from .static_data import region_meta
 
 
@@ -22,6 +24,7 @@ class AutoRepository:
         self._eia = EIARepository(eia_key, cache_ttl_seconds)
         self._entsoe = ENTSOERepository(entsoe_token, cache_ttl_seconds)
         self._canada = CanadaRepository(cache_ttl_seconds)
+        self._japan = JapanRepository(cache_ttl_seconds)
         self._mock = TypicalCarbonRepository()
 
     def _route(self, provider: Provider, region: str):
@@ -32,6 +35,8 @@ class AutoRepository:
             return self._entsoe
         if meta.get("ca_source"):
             return self._canada
+        if meta.get("jp_source"):
+            return self._japan
         return self._mock
 
     async def carbon_now(self, provider: Provider, region: str) -> CarbonReading:

@@ -1473,7 +1473,7 @@ def test_typical_file_covers_every_region_with_a_live_source():
     from greenpick.data.static_data import iter_regions
     for prov, reg, meta in iter_regions():
         entry = typical_entry(prov, reg)
-        if meta.get("eia_ba") or meta.get("entsoe_eic") or meta.get("ca_source"):
+        if meta.get("eia_ba") or meta.get("entsoe_eic") or meta.get("ca_source") or meta.get("jp_source"):
             assert entry is not None, f"{prov}/{reg} missing from typical.json"
             assert len(entry["months"]) == 12
             for m in entry["months"].values():
@@ -1769,9 +1769,9 @@ async def test_asia_reading_is_labelled_annual_and_has_no_hourly_shape():
 async def test_timing_tools_say_there_is_no_hourly_data_for_asia():
     from greenpick.services import scheduling_service, forecast_service, training_service
     repo = TypicalCarbonRepository()
-    tod = await scheduling_service.cleanest_time_of_day(repo, "aws", "ap-northeast-1")
+    tod = await scheduling_service.cleanest_time_of_day(repo, "aws", "ap-southeast-1")
     assert tod.hours_analyzed == 0 and "No recent hourly history" in tod.note
-    fc = await forecast_service.carbon_forecast(repo, "aws", "ap-northeast-1")
+    fc = await forecast_service.carbon_forecast(repo, "aws", "ap-southeast-1")
     assert fc.quality == "annual_average" and "yearly average" in fc.note
     tr = await training_service.estimate_training_carbon(
         repo, gpu="a100", gpu_count=8, gpu_hours=40, region="ap-south-1", provider="aws")
@@ -2054,7 +2054,7 @@ async def test_tools_add_verify_at_but_not_on_errors(monkeypatch):
     monkeypatch.setattr(server, "_repo", TypicalCarbonRepository())
     r = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=0.15)
     assert {v["figure"] for v in r["verify_at"]} == {"grid carbon intensity", "compute cost"}
-    rank = _tool("greenest_regions_on_average")(month=7, regions=["us-west-2", "ap-northeast-1"])
+    rank = _tool("greenest_regions_on_average")(month=7, regions=["us-west-2", "ap-southeast-1"])
     assert any("ourworldindata" in v["url"] for v in rank["verify_at"])
     bad = await _tool("rightsizing_check")(provider="aws", region="us-east-1", vcpu=8, ram_gb=32, cpu_utilization=15)
     assert "error" in bad and "verify_at" not in bad
@@ -2156,3 +2156,78 @@ async def test_serverless_check_azure_is_carbon_only_and_inputs_validated():
                               monthly_requests=1000, avg_duration_ms=0)
     assert "error" in await t(provider="aws", region="us-east-1", vcpu=2, ram_gb=4, avg_cpu_utilization=0.1,
                               monthly_requests=1000, avg_duration_ms=100, function_memory_gb=64)
+
+
+# --- 0.8.0: Tokyo from TEPCO's area supply-and-demand data (used with permission) ---
+_TEPCO_CSV = (
+    "単位[MW平均],,,供給力\n"
+    "DATE,TIME,エリア需要,原子力,火力(LNG),火力(石炭),火力(石油),火力(その他),水力,地熱,バイオマス,"
+    "太陽光発電実績,太陽光出力制御量,風力発電実績,風力出力制御量,揚水,蓄電池,連系線,その他,合計\n"
+    # 09:00 and 09:30 JST = 00 UTC: all coal, then all solar -> equal MW, so (820 + 48) / 2
+    "2026/11/1,9:00,1000,0,0,1000,0,0,0,0,0,0,0,0,0,0,0,0,0,1000\n"
+    "2026/11/1,9:30,1000,0,0,0,0,0,0,0,0,1000,0,0,0,0,0,0,0,1000\n"
+    # 10:00 JST = 01 UTC, only one half published: skipped
+    "2026/11/1,10:00,1000,0,1000,0,0,0,0,0,0,0,0,0,0,-500,0,300,50,1000\n"
+    # not published yet
+    "2026/11/1,10:30,,,,,,,,,,,,,,,,,,\n"
+)
+
+
+def test_tepco_csv_converts_jst_half_hours_to_utc_hours():
+    from greenpick.data import japan_repository as jp
+    hourly = jp.csv_to_hourly(_TEPCO_CSV)
+    assert hourly == {"2026-11-01T00": round((820 + 48) / 2, 1)}
+    assert jp.csv_to_hourly(_TEPCO_CSV.encode("cp932").decode("cp932")) == hourly
+    assert jp.decode(_TEPCO_CSV.encode("cp932")) == _TEPCO_CSV
+    assert jp.csv_to_hourly("no header here\n1,2,3\n") == {}
+
+
+def test_tepco_month_keys_follow_japan_time():
+    from datetime import datetime, timezone
+    from greenpick.data import japan_repository as jp
+    assert jp.month_key(datetime(2026, 10, 31, 15, 30, tzinfo=timezone.utc)) == "202611"   # 00:30 JST 1 Nov
+    assert jp.month_key(datetime(2026, 10, 31, 14, 59, tzinfo=timezone.utc)) == "202610"
+    assert jp.previous_month_key("202601") == "202512" and jp.previous_month_key("202611") == "202610"
+
+
+@pytest.mark.asyncio
+async def test_tepco_is_fetched_at_most_every_30_minutes_even_after_failure(monkeypatch):
+    from greenpick.data import japan_repository as jp
+    calls = []
+
+    class FailingClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, url):
+            calls.append(url)
+            raise RuntimeError("offline")
+
+    monkeypatch.setattr(jp.httpx, "AsyncClient", FailingClient)
+    repo = jp.JapanRepository(cache_ttl_seconds=60)          # a shorter TTL must not speed it up
+    assert repo._ttl == jp.MIN_INTERVAL_S
+    for _ in range(3):
+        r = await repo.carbon_now("aws", "ap-northeast-1")
+        assert r.quality == "typical" and r.source == "typical_tepco"   # falls back, labelled
+    assert len({u for u in calls if "eria_jukyu" in u}) <= 2 and len(calls) <= 2   # current + previous month, once
+
+
+def test_tokyo_results_carry_tepco_credit_and_no_link():
+    from greenpick.services.sources import with_sources
+    r = with_sources({"source": "typical_tepco", "provider": "aws", "region": "ap-northeast-1"})
+    assert r["data_attribution"] == [
+        "Source: Tokyo Electric Power Company Holdings, Inc. Carbon intensity estimated by GreenPick "
+        "from TEPCO's published area supply-and-demand data."]
+    tepco = [v for v in r["verify_at"] if "Tokyo Electric Power" in v["based_on"]]
+    assert tepco and tepco[0]["url"] is None
+    assert "data_attribution" not in with_sources({"source": "eia", "provider": "aws"})
+
+
+@pytest.mark.asyncio
+async def test_tokyo_typical_has_a_daily_profile_now():
+    from greenpick.services import scheduling_service
+    repo = TypicalCarbonRepository()
+    r = await repo.carbon_now("aws", "ap-northeast-1")
+    assert r.quality == "typical" and r.source == "typical_tepco" and 300 < r.g_co2_per_kwh < 650
+    tod = await scheduling_service.cleanest_time_of_day(repo, "azure", "japaneast")
+    assert tod.hours_analyzed > 0

@@ -22,8 +22,8 @@ environment (Cursor / Claude Code / Kiro). Ask it where to deploy, when to run a
 right-size — and it answers with an honest **carbon + cost + latency** tradeoff, in-editor, in
 seconds. (It responds when you ask; auto-nudging on infra-code changes is on the roadmap.)
 
-> **Status: working — 20 tools.** Live carbon for US (EIA-930), EU (ENTSO-E) and Canada (Hydro-Québec,
-> IESO — no key needed), cross-cloud cost
+> **Status: working — 20 tools.** Live carbon for US (EIA-930), EU (ENTSO-E), Canada (Hydro-Québec,
+> IESO — no key needed) and Tokyo (TEPCO — no key needed), cross-cloud cost
 > parity (Vantage-refreshed), per-axis R/Y/G ratings, carbon-aware scheduling + day-ahead forecast,
 > GPU-training **and LLM-inference** carbon, right-sizing, serving-pattern and data-locality/residency
 > checks — all shipped. Offline or without API keys, falls back to clearly-labelled *typical* values:
@@ -167,11 +167,15 @@ See `CHANGELOG.md` for what has shipped in each version.
 - **Hydro-Québec** (Montreal / Québec City regions) and **IESO** (Toronto regions) — live hourly
   generation by source, public, **no key needed**. Hydro-Québec figures arrive 1.5–6 h late, so the
   latest complete hour is used and its timestamp shown.
+- **Tokyo** (the three Tokyo regions) — the Tokyo area's half-hourly generation by source, about an
+  hour behind, **no key needed**. Source: Tokyo Electric Power Company Holdings, Inc. Used with TEPCO's
+  permission; GreenPick shows only the carbon intensity it calculates from the mix (never TEPCO's own
+  figures), credits TEPCO on every Tokyo result, and fetches at most once every 30 minutes.
 - **Typical** — the offline default and fallback: for each region, this calendar month's average
-  intensity and average hour-of-day profile (UTC), computed from 12 months of real hourly EIA-930 /
-  ENTSO-E data (`data/typical.json`, refreshed by `scripts/refresh_typical.py`). Labelled
+  intensity and average hour-of-day profile (UTC), computed from 12 months of real hourly data from
+  the live sources above (`data/typical.json`, refreshed by `scripts/refresh_typical.py`). Labelled
   `quality: "typical"` — a realistic norm, never presented as a current reading.
-- **Annual** — for Singapore, Tokyo, Mumbai/Pune and Sydney, where no free hourly data exists: the country's
+- **Annual** — for Singapore, Mumbai/Pune and Sydney, where no free hourly data exists: the country's
   yearly lifecycle grid intensity from [Ember](https://ember-energy.org/) (via Our World in Data,
   CC BY 4.0), with source and year (`data/annual.json`). Labelled `quality: "annual_average"`; fine for
   comparing regions, but carries no timing signal.

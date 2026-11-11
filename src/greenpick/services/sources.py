@@ -23,6 +23,13 @@ _CARBON = {
     "ember_annual": ("Yearly national grid intensity from Ember, via Our World in Data",
                      "https://ourworldindata.org/grapher/carbon-intensity-electricity"),
     "electricitymaps": ("Grid data from Electricity Maps", "https://www.electricitymaps.com/"),
+    # Credit required by TEPCO's permission. No link: TEPCO asks for notice before anyone links to it.
+    "tepco": ("Tokyo-area grid data from Tokyo Electric Power Company Holdings, Inc. "
+              "(area supply-and-demand results)", None),
+}
+_ATTRIBUTION = {
+    "tepco": ("Source: Tokyo Electric Power Company Holdings, Inc. Carbon intensity estimated by "
+              "GreenPick from TEPCO's published area supply-and-demand data."),
 }
 
 # Cost: provider -> (compute price page, data-transfer price page).
@@ -100,10 +107,25 @@ def verify_at(result: dict) -> list[dict]:
     return out
 
 
+def attributions(result: dict) -> list[str]:
+    """Credits a data provider requires on every result built on its data (e.g. TEPCO)."""
+    found = set()
+    for key, value in _walk(result):
+        if key in _SOURCE_KEYS and isinstance(value, str):
+            base = value[len("typical_"):] if value.startswith("typical_") else value
+            if base in _ATTRIBUTION:
+                found.add(base)
+    return [_ATTRIBUTION[b] for b in sorted(found)]
+
+
 def with_sources(result: dict) -> dict:
-    """Add `verify_at` to a result that contains carbon or cost figures; leave others unchanged."""
+    """Add `verify_at` to a result that contains carbon or cost figures, and `data_attribution`
+    where a data provider requires credit; leave other fields unchanged."""
     if isinstance(result, dict) and "error" not in result:
         links = verify_at(result)
         if links:
             result["verify_at"] = links
+        credits = attributions(result)
+        if credits:
+            result["data_attribution"] = credits
     return result

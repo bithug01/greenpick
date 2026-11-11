@@ -1,7 +1,7 @@
 """Typical carbon source — the fallback whenever live data isn't available.
 
 Serves, for the current calendar month, a region's average grid carbon intensity and its average
-24-hour profile (UTC), computed from 12 months of real hourly data (EIA-930 / ENTSO-E A75) by
+24-hour profile (UTC), computed from 12 months of real hourly data (EIA-930 / ENTSO-E A75 / Hydro-Québec / IESO / TEPCO) by
 scripts/refresh_typical.py and bundled as data/typical.json. Labelled quality="typical": real
 data, but a monthly norm, not a current reading.
 

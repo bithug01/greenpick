@@ -9,7 +9,7 @@
     "ap-southeast-2": { "name": "Sydney",        "lat": -33.87, "lon": 151.21, "zone": "AU-NSW", "annual_zone": "AU", "jurisdiction": "AU" },
     "ca-central-1":   { "name": "Montreal",      "lat": 45.50, "lon": -73.57, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" },
     "ap-southeast-1": { "name": "Singapore",     "lat": 1.29,  "lon": 103.85, "zone": "SG", "annual_zone": "SG", "jurisdiction": "SG" },
-    "ap-northeast-1": { "name": "Tokyo",         "lat": 35.68, "lon": 139.69, "zone": "JP-TK", "annual_zone": "JP", "jurisdiction": "JP" },
+    "ap-northeast-1": { "name": "Tokyo",         "lat": 35.68, "lon": 139.69, "zone": "JP-TK", "annual_zone": "JP", "jp_source": "tepco", "jurisdiction": "JP" },
     "ap-south-1":     { "name": "Mumbai",        "lat": 19.08, "lon": 72.88,  "zone": "IN-WE", "annual_zone": "IN", "jurisdiction": "IN" }
   },
   "gcp": {
@@ -19,7 +19,7 @@
     "northamerica-northeast1": { "name": "Montreal", "lat": 45.50, "lon": -73.57, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" },
     "northamerica-northeast2": { "name": "Toronto",  "lat": 43.65, "lon": -79.38, "zone": "CA-ON", "ca_source": "ieso", "jurisdiction": "CA" },
     "asia-southeast1": { "name": "Singapore",    "lat": 1.35,  "lon": 103.70, "zone": "SG", "annual_zone": "SG", "jurisdiction": "SG" },
-    "asia-northeast1": { "name": "Tokyo",        "lat": 35.68, "lon": 139.69, "zone": "JP-TK", "annual_zone": "JP", "jurisdiction": "JP" },
+    "asia-northeast1": { "name": "Tokyo",        "lat": 35.68, "lon": 139.69, "zone": "JP-TK", "annual_zone": "JP", "jp_source": "tepco", "jurisdiction": "JP" },
     "asia-south1":     { "name": "Mumbai",       "lat": 19.08, "lon": 72.88,  "zone": "IN-WE", "annual_zone": "IN", "jurisdiction": "IN" }
   },
   "azure": {
@@ -29,7 +29,7 @@
     "canadaeast":     { "name": "Quebec City",   "lat": 46.81, "lon": -71.21, "zone": "CA-QC", "ca_source": "hq", "jurisdiction": "CA" },
     "canadacentral":  { "name": "Toronto",       "lat": 43.65, "lon": -79.38, "zone": "CA-ON", "ca_source": "ieso", "jurisdiction": "CA" },
     "southeastasia":  { "name": "Singapore",     "lat": 1.28,  "lon": 103.83, "zone": "SG", "annual_zone": "SG", "jurisdiction": "SG" },
-    "japaneast":      { "name": "Tokyo",         "lat": 35.68, "lon": 139.77, "zone": "JP-TK", "annual_zone": "JP", "jurisdiction": "JP" },
+    "japaneast":      { "name": "Tokyo",         "lat": 35.68, "lon": 139.77, "zone": "JP-TK", "annual_zone": "JP", "jp_source": "tepco", "jurisdiction": "JP" },
     "centralindia":   { "name": "Pune",          "lat": 18.52, "lon": 73.86,  "zone": "IN-WE", "annual_zone": "IN", "jurisdiction": "IN" }
   }
 }
