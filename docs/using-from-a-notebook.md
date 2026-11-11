@@ -86,7 +86,8 @@ REPORTING RULES
 5. Never invent inputs (GB, hours per week, regions, utilisation). If I did not give one, ask. If you
    must assume, list every assumption at the end, including values carried over from an earlier
    question.
-6. Pass on residency_note, live_data_hint and limitations when present. If I ask where a number
+6. Pass on residency_note, live_data_hint, limitations and data_attribution when present
+   (data_attribution is a credit the data provider requires; always show it). If I ask where a number
    comes from, quote its verify_at entry.
 7. Write dollar amounts as "USD 20-40" or escape the sign as \$ so the notebook does not render them
    as maths.

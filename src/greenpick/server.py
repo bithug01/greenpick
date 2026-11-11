@@ -57,7 +57,8 @@ Every carbon figure carries source and quality fields. Report 'typical', 'mock',
 'historical' values as such, never as live readings — including figures derived from them, such as a kg CO2 saving. \
 When a result includes live_data_hint, pass it on: it says why the data isn't live and how to turn \
 live data on. Results with carbon or cost figures include verify_at: the public page behind each \
-figure, for anyone who wants to check it. If a call fails or output is missing, say so rather than describing \
+figure, for anyone who wants to check it. When a result includes data_attribution, always show it: \
+it is a credit the data provider requires. If a call fails or output is missing, say so rather than describing \
 what the tool would return. GreenPick estimates; it does not measure running systems or report model \
 accuracy. Use explain_methodology_and_limits when asked how a number was produced.\
 """

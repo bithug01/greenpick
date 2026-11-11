@@ -4,6 +4,13 @@ All notable changes to GreenPick. Dates are the release commit's date. Versions 
 [PyPI](https://pypi.org/project/greenpick/) and the
 [MCP Registry](https://registry.modelcontextprotocol.io/); each has a matching git tag.
 
+## 0.8.0 - (unreleased)
+- Live carbon for the three Tokyo regions from the Tokyo area's half-hourly generation by source, about an
+  hour behind, no key needed. Source: Tokyo Electric Power Company Holdings, Inc., used with permission.
+  GreenPick shows only the carbon intensity it calculates from the mix, fetches at most once every 30
+  minutes, and adds a `data_attribution` credit to every result built on Tokyo data.
+- Tokyo now has a typical monthly profile, so timing advice works there; it was a yearly average before.
+
 ## 0.7.0 - 2026-11-10
 - New `serverless_check`: an always-on server vs. paying per request (AWS Lambda, Google Cloud Run) for
   a mostly idle or spiky service. Monthly cost of each, the break-even request count, whether the traffic
