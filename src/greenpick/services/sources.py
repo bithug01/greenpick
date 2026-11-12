@@ -23,9 +23,9 @@ _CARBON = {
     "ember_annual": ("Yearly national grid intensity from Ember, via Our World in Data",
                      "https://ourworldindata.org/grapher/carbon-intensity-electricity"),
     "electricitymaps": ("Grid data from Electricity Maps", "https://www.electricitymaps.com/"),
-    # Credit required by TEPCO's permission. No link: TEPCO asks for notice before anyone links to it.
+    # Credit and link as agreed with TEPCO (permission 10 Nov 2026; wording and link confirmed 11 Nov 2026).
     "tepco": ("Tokyo-area grid data from Tokyo Electric Power Company Holdings, Inc. "
-              "(area supply-and-demand results)", None),
+              "(area supply-and-demand results)", "https://www.tepco.co.jp/forecast/html/area_data-j.html"),
 }
 _ATTRIBUTION = {
     "tepco": ("Source: Tokyo Electric Power Company Holdings, Inc. Carbon intensity estimated by "

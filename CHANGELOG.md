@@ -4,11 +4,12 @@ All notable changes to GreenPick. Dates are the release commit's date. Versions 
 [PyPI](https://pypi.org/project/greenpick/) and the
 [MCP Registry](https://registry.modelcontextprotocol.io/); each has a matching git tag.
 
-## 0.8.0 - (unreleased)
+## 0.8.0 - 2026-11-11
 - Live carbon for the three Tokyo regions from the Tokyo area's half-hourly generation by source, about an
   hour behind, no key needed. Source: Tokyo Electric Power Company Holdings, Inc., used with permission.
   GreenPick shows only the carbon intensity it calculates from the mix, fetches at most once every 30
-  minutes, and adds a `data_attribution` credit to every result built on Tokyo data.
+  minutes, and adds a `data_attribution` credit to every result built on Tokyo data, with `verify_at`
+  linking to TEPCO's source page.
 - Tokyo now has a typical monthly profile, so timing advice works there; it was a yearly average before.
 
 ## 0.7.0 - 2026-11-10

@@ -168,7 +168,7 @@ See `CHANGELOG.md` for what has shipped in each version.
   generation by source, public, **no key needed**. Hydro-Québec figures arrive 1.5–6 h late, so the
   latest complete hour is used and its timestamp shown.
 - **Tokyo** (the three Tokyo regions) — the Tokyo area's half-hourly generation by source, about an
-  hour behind, **no key needed**. Source: Tokyo Electric Power Company Holdings, Inc. Used with TEPCO's
+  hour behind, **no key needed**. Source: [Tokyo Electric Power Company Holdings, Inc.](https://www.tepco.co.jp/forecast/html/area_data-j.html). Used with TEPCO's
   permission; GreenPick shows only the carbon intensity it calculates from the mix (never TEPCO's own
   figures), credits TEPCO on every Tokyo result, and fetches at most once every 30 minutes.
 - **Typical** — the offline default and fallback: for each region, this calendar month's average

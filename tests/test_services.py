@@ -2212,14 +2212,14 @@ async def test_tepco_is_fetched_at_most_every_30_minutes_even_after_failure(monk
     assert len({u for u in calls if "eria_jukyu" in u}) <= 2 and len(calls) <= 2   # current + previous month, once
 
 
-def test_tokyo_results_carry_tepco_credit_and_no_link():
+def test_tokyo_results_carry_tepco_credit_and_link():
     from greenpick.services.sources import with_sources
     r = with_sources({"source": "typical_tepco", "provider": "aws", "region": "ap-northeast-1"})
     assert r["data_attribution"] == [
         "Source: Tokyo Electric Power Company Holdings, Inc. Carbon intensity estimated by GreenPick "
         "from TEPCO's published area supply-and-demand data."]
     tepco = [v for v in r["verify_at"] if "Tokyo Electric Power" in v["based_on"]]
-    assert tepco and tepco[0]["url"] is None
+    assert tepco and tepco[0]["url"] == "https://www.tepco.co.jp/forecast/html/area_data-j.html"
     assert "data_attribution" not in with_sources({"source": "eia", "provider": "aws"})
 
 

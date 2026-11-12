@@ -5,7 +5,8 @@ format: 30-minute rows (JST), with generation by source in MW averaged over each
 split into LNG, coal, oil and other, plus nuclear, hydro, geothermal, biomass, solar and wind). The
 current month's file is updated through the day, about an hour behind. No key is needed.
 
-Used with permission from Tokyo Electric Power Company Holdings, Inc. (granted 10 November 2026), on
+Used with permission from Tokyo Electric Power Company Holdings, Inc. (granted 10 November 2026, with the
+attribution wording, the calculated figures and a link to the source page confirmed 11 November 2026), on
 condition that TEPCO is credited as the source and its materials are not altered or edited. GreenPick
 does neither show nor republish TEPCO's figures: it calculates an estimated carbon intensity from the
 generation mix, weighted with GreenPick's own per-fuel factors (emission_factors.json ->
